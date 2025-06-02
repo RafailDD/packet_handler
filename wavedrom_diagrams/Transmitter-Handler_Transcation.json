@@ -1,0 +1,14 @@
+{signal: [
+  {name: 'i_clk', wave: 'P..........'},
+  {name: 'i_data[31:0]', wave: 'x..345..6x.', data:["D1","D2","D3","D4"]},
+  {name: 'i_valid', wave: '0.1......0.'},
+  {name: 'o_ready', wave:'0..1.0.1...'},
+  {name: 'i_last', wave:'0.......10.'},
+],
+head:{
+   text:'Transmitter-Handler Transaction'
+},
+foot:{
+   tick: 0
+}
+}

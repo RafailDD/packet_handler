@@ -1,0 +1,13 @@
+{signal: [
+  {name: 'i_clk', wave: 'P..........'},
+  {name: 'o_data[295:0]', wave: 'x..8...x...',},
+  {name: 'o_valid', wave: '0..1...0...'},
+  {name: 'i_ready', wave:'0.....10...'},
+],
+head:{
+   text:'Handler-Receiver Transaction'
+},
+foot:{
+   tick: 0
+}
+}
