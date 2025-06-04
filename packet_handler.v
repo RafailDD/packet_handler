@@ -27,7 +27,7 @@ module packet_handler(
     output reg [295:0] o_data;
     output reg         o_ready;
     output reg         o_valid;
-    output reg         o_packetLost;
+    output             o_packetLost;
 
     /* internal signals */
     /* header format values */
@@ -205,10 +205,11 @@ module packet_handler(
     end
 
     /* Lost packet detection logic */
+    integer i;
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
             /* initializing packetTracker to 0s */
-            for (int i = 0; i < 32; i++) begin
+            for (i = 0; i < 32; i = i + 1) begin
                 packetTracker[i] <= 32'b0;
             end
         end else begin
@@ -236,7 +237,7 @@ module packet_handler(
                     o_packetLostReg <= 1'b0;
                 end
                 default: begin
-                    for (int i = 0; i < 32; i++) begin
+                    for (i = 0; i < 32; i = i + 1) begin
                         packetTracker[i] <= 32'b0;
                     end
                 end
