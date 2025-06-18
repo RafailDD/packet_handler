@@ -129,12 +129,22 @@ Looking at the simulation output with this testbench it can be verified that the
 ![Diagram_state_machine_0](./TerosHDL_diagrams/fsm_packet_handler_00.svg)
 
 # Notes
-This is a work in progress. The goal is to proceed with synthesis and examine what technologies can be targeted and the max clock frequency it can be achieved. The design will also be optimized with storage elements.
+This is a work in progress. The goal is to proceed with synthesis and examine what technologies can be targeted and the max clock frequency it can be achieved. The design may also change (or include different versions) to include a storage element to maximize throughput.
+
 The goal for the documentation is to be fully stand-alone and will be enriched with time.
 
-Tools used in the project:
-- EDA Playground
-- Verilator
-- TerosHDL
-- Sigasi SVH Community Edition
-- Wavedrom
+Tools used for the project:
+- [EDA Playground](https://edaplayground.com/)
+- [Verilator](https://www.veripool.org/verilator/)
+- [TerosHDL](https://terostechnology.github.io/terosHDLdoc/)
+- [Sigasi Visual HDL](https://www.sigasi.com/) Community Edition
+- [Wavedrom](https://wavedrom.com/)
+
+# Project Roadmap
+- [x] Add URLs for tools used
+- [ ] Add project file structure
+- [ ] Create testbench with cocotb or other tools
+- [ ] Explore open source flows and tools (OSS Cad Suite, ProjectF, OpenROAD) and how they fit with the project's goals
+- [ ] Verify design, post code and functional coverage
+- [ ] Explore FPGA options to target specific technologies
+- [ ] Look into synthesis options, explore libraries for maximum clock frequency
