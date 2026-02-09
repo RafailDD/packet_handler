@@ -30,14 +30,23 @@ module packet_handler_tb;
     );
 
     initial begin
+        $dumpfile("wave.vcd");
+        $dumpvars(0, packet_handler_tb);
+    end
+
+    initial begin
+        $monitor("%t: dataIn=%h, validIn=%b, readyOut=%b, lastIn=%b, dataOut=%h, readyIn=%b, validOut=%b, packetLost=%b, state=%b, msgLength:%h, streamId:%h, seqNumber:%h, shiftReg:%h",
+        $time, dataIn, validIn, readyOut, lastIn, dataOut, readyIn, validOut, packetLost, UTpacket_handler.state, UTpacket_handler.msgLength, UTpacket_handler.streamId, UTpacket_handler.seqNumber, UTpacket_handler.shiftReg);
+    end
+
+    
+    initial begin
         clk        = 1'b0;
         rst_n      = 1'b0;
         dataIn     = 'bx;
         validIn    = 1'b0;
         readyOut   = 1'b0;
         lastIn     = 1'b0;
-        $monitor("%t: dataIn=%h, validIn=%b, readyOut=%b, lastIn=%b, dataOut=%h, readyIn=%b, validOut=%b, packetLost=%b, state=%b, msgLength:%h, streamId:%h, seqNumber:%h, shiftReg:%h",
-            $time, dataIn, validIn, readyOut, lastIn, dataOut, readyIn, validOut, packetLost, UTpacket_handler.state, UTpacket_handler.msgLength, UTpacket_handler.streamId, UTpacket_handler.seqNumber, UTpacket_handler.shiftReg);
     end
 
     always
