@@ -9,9 +9,9 @@ async def reset_dut(dut):
     dut.i_valid.value = 0
     dut.i_last.value = 0
     dut.i_ready.value = 0
-    await Timer(10, units="ns")
+    await Timer(10, unit="ns")
     dut.i_rst_n.value = 1
-    await Timer(10, units="ns")
+    await Timer(10, unit="ns")
 
 def send_bytes_little_endian(dut, val, bytes_count):
     res = 0
@@ -61,7 +61,7 @@ async def send_packet(dut, stream_id, seq_number, data_words):
 @cocotb.test()
 async def test_reset(dut):
     """Test initial state after reset."""
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     assert dut.o_ready.value == 1, "DUT should be ready after reset"
@@ -71,7 +71,7 @@ async def test_reset(dut):
 @cocotb.test()
 async def test_basic_packet(dut):
     """Test sending a basic packet."""
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     data = [0x5A22B2D4, 0x5A22B49E, 0x42E3C71E, 0x43995B7E]
@@ -103,7 +103,7 @@ async def test_basic_packet(dut):
 @cocotb.test()
 async def test_multiple_valid_streams(dut):
     """Test multiple streams with correct seqNumbers."""
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     # Stream 1, seq 1
@@ -144,7 +144,7 @@ import random
 @cocotb.test()
 async def test_dropped_lost_packet(dut):
     """Test sending a packet with skipped seqNumber to trigger packetLost."""
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     # Send packet 1, stream 5, seq 1
@@ -190,7 +190,7 @@ async def test_min_length_packet(dut):
     """Test sending the smallest possible packet (9 bytes).
     This means header (8 bytes) + 1 byte data.
     """
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     data = [0x000000FF]
@@ -244,7 +244,7 @@ async def test_min_length_packet(dut):
 @cocotb.test()
 async def test_randomized_packets(dut):
     """Test with randomized packet lengths, streams, and data payloads."""
-    cocotb.start_soon(Clock(dut.i_clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
     streams_seq = {i: 1 for i in range(1, 33)}
