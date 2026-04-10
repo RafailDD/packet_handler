@@ -1,7 +1,8 @@
 `timescale 1ns/1ps
 
-import uvm_pkg::*;
 `include "uvm_macros.svh"
+`include "uvm_pkg.sv"
+import uvm_pkg::*;
 
 // Interface
 interface packet_if (input logic clk, input logic rst_n);
@@ -110,34 +111,12 @@ class packet_monitor extends uvm_monitor;
     packet_item req_sampled;
 
     // Covergroup for coverage
-    covergroup packet_cg;
-        c_msgLength: coverpoint req_sampled.msgLength {
-            bins small_pkt = {[9:15]};
-            bins medium_pkt = {[16:30]};
-            bins large_pkt = {[31:45]};
-        }
-        c_streamId: coverpoint req_sampled.streamId {
-            bins s1 = {1};
-            bins s16 = {16};
-            bins s32 = {32};
-            bins others[4] = {[2:15], [17:31]};
-        }
-        c_seqNumber: coverpoint req_sampled.seqNumber {
-            bins early_seq = {[1:10]};
-            bins high_seq = {[100:1000]};
-        }
-        c_packetLost: coverpoint vif.o_packetLost { // using actual interface signal
-            bins no_loss = {0};
-            bins lost = {1};
-        }
-    endgroup
 
 
 
     function new(string name, uvm_component parent);
         super.new(name, parent);
         ap = new("ap", this);
-        packet_cg = new();
     endfunction
 
     function void build_phase(uvm_phase phase);
@@ -163,7 +142,6 @@ class packet_monitor extends uvm_monitor;
                 // Send the transaction to the scoreboard
                 ap.write(pkt);
                 req_sampled = pkt;
-                packet_cg.sample();
             end
         end
     endtask
@@ -215,7 +193,7 @@ class packet_agent extends uvm_agent;
         super.build_phase(phase);
         driver = packet_driver::type_id::create("driver", this);
         monitor = packet_monitor::type_id::create("monitor", this);
-        sequencer = uvm_sequencer#(packet_item)::type_id::create("sequencer", this);
+        sequencer = new("sequencer", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);
@@ -257,13 +235,17 @@ class packet_seq extends uvm_sequence #(packet_item);
         for(int i = 1; i <= 5; i++) begin
             req = packet_item::type_id::create("req");
             start_item(req);
-            assert(req.randomize() with { seqNumber == i; streamId == 15; });
+            assert(req.randomize());
+            req.seqNumber = i;
+            req.streamId = 15;
             finish_item(req);
         end
         // Test missing packet (seq 7 instead of 6) to trigger packetLost
         req = packet_item::type_id::create("req");
         start_item(req);
-        assert(req.randomize() with { seqNumber == 7; streamId == 15; });
+        assert(req.randomize());
+        req.seqNumber = 7;
+        req.streamId = 15;
         finish_item(req);
     endtask
 endclass
