@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 
 `include "uvm_macros.svh"
-`include "uvm_pkg.sv"
 import uvm_pkg::*;
 
 // Interface
@@ -22,18 +21,17 @@ class packet_item extends uvm_sequence_item;
     rand bit [15:0] msgLength;
     rand bit [15:0] streamId;
     rand bit [31:0] seqNumber;
-    rand bit [7:0]  payload[];
+    bit [7:0] payload[64];
 
     // Constraints
     constraint c_msgLength { msgLength inside {[9:45]}; }
     constraint c_streamId { streamId inside {[1:32]}; }
-    constraint c_payload_len { payload.size() == (msgLength - 8); }
 
     `uvm_object_utils_begin(packet_item)
         `uvm_field_int(msgLength, UVM_ALL_ON)
         `uvm_field_int(streamId, UVM_ALL_ON)
         `uvm_field_int(seqNumber, UVM_ALL_ON)
-        `uvm_field_array_int(payload, UVM_ALL_ON)
+        //`uvm_field_array_int(payload, UVM_ALL_ON)
     `uvm_object_utils_end
 
     function new(string name = "packet_item");
@@ -87,15 +85,15 @@ class packet_driver extends uvm_driver #(packet_item);
         vif.data <= header_w2;
         @(posedge vif.clk);
 
-        for(int i = 0; i < item.payload.size(); i+=4) begin
+        for(int i = 0; i < (item.msgLength - 8); i+=4) begin
             logic [31:0] pdata = 0;
-            pdata[7:0]   = (i < item.payload.size()) ? item.payload[i] : 8'd0;
-            pdata[15:8]  = (i+1 < item.payload.size()) ? item.payload[i+1] : 8'd0;
-            pdata[23:16] = (i+2 < item.payload.size()) ? item.payload[i+2] : 8'd0;
-            pdata[31:24] = (i+3 < item.payload.size()) ? item.payload[i+3] : 8'd0;
+            pdata[7:0]   = (i < (item.msgLength - 8)) ? item.payload[i] : 8'd0;
+            pdata[15:8]  = (i+1 < (item.msgLength - 8)) ? item.payload[i+1] : 8'd0;
+            pdata[23:16] = (i+2 < (item.msgLength - 8)) ? item.payload[i+2] : 8'd0;
+            pdata[31:24] = (i+3 < (item.msgLength - 8)) ? item.payload[i+3] : 8'd0;
 
             vif.data <= pdata;
-            if(i+4 >= item.payload.size())
+            if(i+4 >= (item.msgLength - 8))
                 vif.last <= 1;
             @(posedge vif.clk);
         end
