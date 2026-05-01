@@ -1,11 +1,11 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1777633931" />
-    <testcase name="test_reset" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="61" time="0.001058816909790039" sim_time_ns="20.0" ratio_time="18889.006980409817" />
-    <testcase name="test_basic_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="71" time="0.0018253326416015625" sim_time_ns="100.0" ratio_time="54784.53500522466" />
-    <testcase name="test_multiple_valid_streams" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="103" time="0.003061056137084961" sim_time_ns="210.0" ratio_time="68603.77287950776" />
-    <testcase name="test_dropped_lost_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="144" time="0.0023610591888427734" sim_time_ns="140.0" ratio_time="59295.42158941735" />
-    <testcase name="test_min_length_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="188" time="0.0012793540954589844" sim_time_ns="70.0" ratio_time="54715.10995154678" />
-    <testcase name="test_randomized_packets" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="244" time="0.0693516731262207" sim_time_ns="5360.0" ratio_time="77287.24857502355" />
+    <property name="random_seed" value="1777656305" />
+    <testcase name="test_reset" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="61" time="0.0017757415771484375" sim_time_ns="20.0" ratio_time="11262.900107411386" />
+    <testcase name="test_basic_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="71" time="0.002087831497192383" sim_time_ns="110.0" ratio_time="52686.24414753911" />
+    <testcase name="test_multiple_valid_streams" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="103" time="0.0032913684844970703" sim_time_ns="220.0" ratio_time="66841.49800796813" />
+    <testcase name="test_dropped_lost_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="144" time="0.002582073211669922" sim_time_ns="150.0" ratio_time="58092.853185595566" />
+    <testcase name="test_min_length_packet" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="188" time="0.0016202926635742188" sim_time_ns="80.0" ratio_time="49373.79635079458" />
+    <testcase name="test_randomized_packets" classname="test_packet_handler" file="/app/test_packet_handler.py" lineno="244" time="0.08148670196533203" sim_time_ns="6070.0" ratio_time="74490.68195915502" />
   </testsuite>
 </testsuites>
