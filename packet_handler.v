@@ -31,8 +31,10 @@ module packet_handler(
 
     /* internal signals */
     /* header format values */
+    /* verilator lint_off UNUSEDSIGNAL */
     reg [15:0]  msgLength;
     reg [15:0]  streamId;
+    /* verilator lint_on UNUSEDSIGNAL */
     reg [31:0]  seqNumber;
     /* using unpacked array to track seqNumber based on streamId
     using 32 bits to store seqNumber and 32 elements for each streamId */
@@ -155,7 +157,7 @@ module packet_handler(
      of the header*/
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
-            o_data <= 32'b0;
+            o_data <= 296'b0;
             msgLength <= 16'b0;
             streamId <= 16'b0;
             seqNumber <= 32'b0;
@@ -194,7 +196,7 @@ module packet_handler(
                     end
                 end
                 default: begin
-                    o_data <= 32'b0;
+                    o_data <= 296'b0;
                     msgLength <= 16'b0;
                     streamId <= 16'b0;
                     seqNumber <= 32'b0;
@@ -209,9 +211,12 @@ module packet_handler(
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
             /* initializing packetTracker to 0s */
+`ifndef SYNTHESIS
             for (i = 0; i < 32; i = i + 1) begin
                 packetTracker[i] <= 32'b0;
             end
+`endif
+            o_packetLostReg <= 1'b0;
         end else begin
             case (state)
                 IDLE: begin
@@ -221,13 +226,13 @@ module packet_handler(
                     /* updating internal counter for incoming streamId 
                     streamId range is 1-32 and index range is 0-31 */
                     o_packetLostReg <= 1'b0;
-                    packetTracker[streamId-1] <= packetTracker[streamId-1]+1;
+                    packetTracker[streamId[4:0]-1] <= packetTracker[streamId[4:0]-1]+1;
                 end
                 DATA: begin
                     /* comparing internal counter for incoming streamId
                     with incoming seqNumber and asserting o_packetLostReg
                     if it is not the same */
-                    if (packetTracker[streamId-1] == seqNumber) begin
+                    if (packetTracker[streamId[4:0]-1] == seqNumber) begin
                         o_packetLostReg <= 1'b0;
                     end else begin
                         o_packetLostReg <= 1'b1;
@@ -237,9 +242,12 @@ module packet_handler(
                     o_packetLostReg <= 1'b0;
                 end
                 default: begin
+`ifndef SYNTHESIS
                     for (i = 0; i < 32; i = i + 1) begin
                         packetTracker[i] <= 32'b0;
                     end
+`endif
+                    o_packetLostReg <= 1'b0;
                 end
             endcase
         end
