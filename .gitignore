@@ -4,3 +4,8 @@
 obj_dir/
 uvm/uvm-src/
 uvm/uvm-src/
+a.out
+test_class.sv
+test_vif.sv
+__pycache__/
+testbench.sv
