@@ -148,3 +148,25 @@ Tools used for the project:
 - [ ] Verify design, post code and functional coverage
 - [ ] Explore FPGA options to target specific technologies
 - [ ] Look into synthesis options, explore libraries for maximum clock frequency
+
+## Dev Guide: Simulation Flows
+
+This repository provides three distinct simulation flows to test and verify the `packet_handler` module. Each flow serves a different purpose, ranging from Python-based agile testing to rigorous SystemVerilog UVM-style verification.
+
+### 1. Cocotb Flow with Icarus Verilog
+- **Command:** `make`
+- **Description:** A Python-based testing environment using Cocotb. It sends various randomized, edge-case, and basic packets to the RTL and checks for correct behavior.
+- **Dependencies:** Icarus Verilog (`iverilog`), Python 3, `cocotb`, and `pytest`.
+- **Limitations/Preferences:** Great for agile, Python-scripted scenarios. Does not track SystemVerilog functional coverage.
+
+### 2. Standalone SystemVerilog Testbench with Icarus Verilog
+- **Command:** `make -f Makefile.icarus`
+- **Description:** A fallback, open-source-friendly pure SystemVerilog testbench. It uses basic classes and queues to verify the logic, bypassing advanced UVM features that are unsupported in Icarus Verilog.
+- **Dependencies:** Icarus Verilog (`iverilog`).
+- **Limitations/Preferences:** Lightweight and runs anywhere Icarus Verilog is installed. It lacks the exhaustive coverage capabilities of a full UVM environment.
+
+### 3. Pure UVM-Style SV Testbench with Verilator
+- **Command:** `make -f Makefile.sv`
+- **Description:** Uses Verilator to compile and execute a highly structured, pure SystemVerilog class-based environment (similar to UVM architecture: generator, driver, monitor, scoreboard, and coverage).
+- **Dependencies:** Verilator (`verilator`).
+- **Limitations/Preferences:** Verilator compiles the SV code down to C++ for extremely fast simulation. Highly preferred for exhaustive testing and functional coverage generation, though it expects strict linting (e.g., handling unused signals).

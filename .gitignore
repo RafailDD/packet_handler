@@ -1,14 +1,16 @@
 .library_mapping.xml
 .project
 .settings/
-obj_dir/
-<<<<<<< feat/rtl-synthesis-cleanup
-=======
-uvm/uvm-src/
-uvm/uvm-src/
->>>>>>> jules-experimenting
+__pycache__/
 a.out
+obj_dir/
 test_class.sv
 test_vif.sv
-__pycache__/
 testbench.sv
+uvm/uvm-src/
+
+sim.out
+wave.vcd
+results.xml
+sim_build/
+sim_test
