@@ -2,8 +2,11 @@
 .project
 .settings/
 obj_dir/
+<<<<<<< feat/rtl-synthesis-cleanup
+=======
 uvm/uvm-src/
 uvm/uvm-src/
+>>>>>>> jules-experimenting
 a.out
 test_class.sv
 test_vif.sv
