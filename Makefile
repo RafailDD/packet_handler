@@ -29,9 +29,9 @@ help:
 # ==========================================
 # Cocotb Flow
 # ==========================================
-.PHONY: cocotb
+.PHONY: cocotb run_cocotb
 
-# Workaround for cocotb variables being needed before include
+# Setup cocotb variables
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 PWD=$(shell pwd)
@@ -41,12 +41,16 @@ COCOTB_TEST_MODULES = tb_cocotb
 
 ifeq ($(WAVES),1)
     export WAVES=1
+    COMPILE_ARGS += -D WAVES=1
 endif
 
-cocotb:
-	@echo "Running cocotb flow..."
-	$(MAKE) -f Makefile.cocotb sim
+cocotb: run_cocotb
 	@if [ "$(WAVES)" = "1" ]; then cp sim_build/*.fst waves_cocotb.fst || true; fi
+
+run_cocotb:
+	$(MAKE) sim
+
+include $(shell cocotb-config --makefiles)/Makefile.sim
 
 # ==========================================
 # Icarus Flow
