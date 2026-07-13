@@ -1,4 +1,4 @@
-module packet_handler_tb;
+module tb_smoke;
 
     reg              clk;
     reg              rst_n;
@@ -30,8 +30,10 @@ module packet_handler_tb;
     );
 
     initial begin
-        $dumpfile("wave.vcd");
-        $dumpvars(0, packet_handler_tb);
+`ifdef WAVES
+        $dumpfile(`WAVE_FILE);
+        $dumpvars(0, tb_smoke);
+`endif
     end
 
     initial begin
@@ -49,8 +51,10 @@ module packet_handler_tb;
         lastIn     = 1'b0;
     end
 
+    /* verilator lint_off BLKSEQ */
     always
     #5 clk = ~clk;
+    /* verilator lint_on BLKSEQ */
 
     initial begin
         #2.5 rst_n = 1'b0;

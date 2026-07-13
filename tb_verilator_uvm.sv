@@ -145,9 +145,16 @@ class env;
     endfunction
 endclass
 
-module testbench;
+module tb_verilator_uvm;
     logic clk;
     logic rst_n;
+
+    initial begin
+`ifdef WAVES
+        $dumpfile(`WAVE_FILE);
+        $dumpvars(0, tb_verilator_uvm);
+`endif
+    end
 
     logic [31:0] i_data;
     logic i_valid;

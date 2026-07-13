@@ -1,9 +1,16 @@
 `timescale 1ns/1ps
 
-module packet_handler_tb_sv;
+module tb_icarus_sv;
 
     logic clk;
     logic rst_n;
+
+    initial begin
+`ifdef WAVES
+        $dumpfile(`WAVE_FILE);
+        $dumpvars(0, tb_icarus_sv);
+`endif
+    end
 
     // Inputs
     logic [31:0]  i_data;
