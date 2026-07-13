@@ -150,7 +150,7 @@ module tb_verilator_uvm;
     logic rst_n;
 
     initial begin
-`ifdef WAVES
+`ifdef WAVE
         $dumpfile(`WAVE_FILE);
         $dumpvars(0, tb_verilator_uvm);
 `endif
