@@ -36,10 +36,12 @@ module tb_smoke;
 `endif
     end
 
+    /* verilator lint_off SYNCASYNCNET */
     initial begin
         $monitor("%t: dataIn=%h, validIn=%b, readyOut=%b, lastIn=%b, dataOut=%h, readyIn=%b, validOut=%b, packetLost=%b, state=%b, msgLength:%h, streamId:%h, seqNumber:%h, shiftReg:%h",
         $time, dataIn, validIn, readyOut, lastIn, dataOut, readyIn, validOut, packetLost, UTpacket_handler.state, UTpacket_handler.msgLength, UTpacket_handler.streamId, UTpacket_handler.seqNumber, UTpacket_handler.shiftReg);
     end
+    /* verilator lint_on SYNCASYNCNET */
 
     
     initial begin

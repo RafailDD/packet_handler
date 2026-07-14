@@ -35,6 +35,17 @@ ifeq ($(GUI),1)
 endif
 
 # ==========================================
+# Parse and Sanitize Inputs
+# ==========================================
+ifneq ($(TB),)
+    # Strip extension (e.g. tb_smoke.v -> tb_smoke)
+    TB_CLEAN = $(basename $(TB))
+    ifneq ($(TB),$(TB_CLEAN))
+        $(info Note: Stripped file extension from TB argument. Using TB=$(TB_CLEAN))
+    endif
+endif
+
+# ==========================================
 # Cocotb Flow
 # ==========================================
 .PHONY: cocotb run_cocotb
@@ -73,17 +84,17 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 .PHONY: icarus
 
 # Default TB for Icarus
-icarus: TB ?= tb_basic_sv
+icarus: TB_CLEAN ?= tb_basic_sv
 icarus:
-	@echo "Running Icarus Verilog with testbench: $(TB)"
+	@echo "Running Icarus Verilog with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
-	iverilog -g2012 -I tests -D WAVE=1 -D WAVE_FILE=\"waves_icarus_$(TB).vcd\" -o sim_icarus_$(TB).out packet_handler.v $(wildcard tests/$(TB).v) $(wildcard tests/$(TB).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB).log
+	iverilog -g2012 -I tests -D WAVE=1 -D WAVE_FILE=\"waves_icarus_$(TB_CLEAN).vcd\" -o sim_icarus_$(TB_CLEAN).out packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
 else
-	iverilog -g2012 -I tests -o sim_icarus_$(TB).out packet_handler.v $(wildcard tests/$(TB).v) $(wildcard tests/$(TB).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB).log
+	iverilog -g2012 -I tests -o sim_icarus_$(TB_CLEAN).out packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
 endif
-	vvp sim_icarus_$(TB).out 2>&1 | tee -a tests/logs/sim_icarus_$(TB).log
-	@if [ "$(GUI)" = "1" ]; then gtkwave waves_icarus_$(TB).vcd & fi
+	vvp sim_icarus_$(TB_CLEAN).out 2>&1 | tee -a tests/logs/sim_icarus_$(TB_CLEAN).log
+	@if [ "$(GUI)" = "1" ]; then gtkwave waves_icarus_$(TB_CLEAN).vcd & fi
 
 
 # ==========================================
@@ -92,17 +103,17 @@ endif
 .PHONY: verilator
 
 # Default TB for Verilator
-verilator: TB ?= tb_uvm_sv
+verilator: TB_CLEAN ?= tb_uvm_sv
 verilator:
-	@echo "Running Verilator with testbench: $(TB)"
+	@echo "Running Verilator with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
-	verilator --binary -Itests -j 0 -Wall --trace +define+WAVE=1 +define+WAVE_FILE=\"waves_verilator_$(TB).vcd\" packet_handler.v $(wildcard tests/$(TB).v) $(wildcard tests/$(TB).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB).log
+	verilator --binary -Itests -j 0 -Wall --trace +define+WAVE=1 +define+WAVE_FILE=\"waves_verilator_$(TB_CLEAN).vcd\" packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
 else
-	verilator --binary -Itests -j 0 -Wall packet_handler.v $(wildcard tests/$(TB).v) $(wildcard tests/$(TB).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB).log
+	verilator --binary -Itests -j 0 -Wall packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
 endif
-	./obj_dir/Vpacket_handler 2>&1 | tee -a tests/logs/sim_verilator_$(TB).log
-	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB).vcd & fi
+	./obj_dir/Vpacket_handler 2>&1 | tee -a tests/logs/sim_verilator_$(TB_CLEAN).log
+	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB_CLEAN).vcd & fi
 
 # ==========================================
 # Clean
