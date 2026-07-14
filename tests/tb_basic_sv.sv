@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 
-module tb_icarus_sv;
+/* verilator lint_off TIMESCALEMOD */
+module tb_basic_sv;
 
     logic clk;
     logic rst_n;
@@ -8,7 +9,7 @@ module tb_icarus_sv;
     initial begin
 `ifdef WAVE
         $dumpfile(`WAVE_FILE);
-        $dumpvars(0, tb_icarus_sv);
+        $dumpvars(0, tb_basic_sv);
 `endif
     end
 
@@ -19,7 +20,9 @@ module tb_icarus_sv;
     logic         i_last;
 
     // Outputs
+    /* verilator lint_off UNUSEDSIGNAL */
     logic [295:0] o_data;
+    /* verilator lint_on UNUSEDSIGNAL */
     logic         o_ready;
     logic         o_valid;
     logic         o_packetLost;
@@ -49,6 +52,8 @@ module tb_icarus_sv;
     int pkt_count = 0;
 
     // Send packet task
+    /* verilator lint_off INITIALDLY */
+    /* verilator lint_off UNUSEDSIGNAL */
     task send_packet(input int msgLength, input int streamId, input int seqNumber, input logic[7:0] payload[]);
         logic [31:0] header_w1;
         logic [31:0] header_w2;
@@ -81,8 +86,11 @@ module tb_icarus_sv;
         i_valid <= 0;
         i_last <= 0;
     endtask
+    /* verilator lint_on UNUSEDSIGNAL */
+    /* verilator lint_on INITIALDLY */
 
     // Monitor / Scoreboard
+    /* verilator lint_off BLKSEQ */
     always @(posedge clk) begin
         if(o_valid && i_ready) begin
             $display("[%0t] SCOREBOARD: Received output payload transaction.", $time);
@@ -92,6 +100,7 @@ module tb_icarus_sv;
             $display("[%0t] SCOREBOARD: Packet Lost detected!", $time);
         end
     end
+    /* verilator lint_on BLKSEQ */
 
     // Test Scenarios
     initial begin
@@ -107,7 +116,9 @@ module tb_icarus_sv;
         // Scenario 1: Normal packets
         for (int i = 1; i <= 5; i++) begin
             payload = new[16];
+            /* verilator lint_off WIDTHTRUNC */
             foreach(payload[k]) payload[k] = k;
+            /* verilator lint_on WIDTHTRUNC */
             send_packet(24, 15, i, payload); // msgLen=24, stream=15
         end
 

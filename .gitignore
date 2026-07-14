@@ -18,3 +18,4 @@ waves_*.fst
 results.xml
 sim_build/
 sim_test
+tests/logs/

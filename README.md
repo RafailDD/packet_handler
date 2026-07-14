@@ -151,31 +151,4 @@ Tools used for the project:
 
 ## Dev Guide: Simulation Flows
 
-This repository provides a unified Makefile to manage three distinct simulation flows, enabling robust verification of the `packet_handler` module. Each flow serves a different purpose, and every testbench file has a specific role.
-
-### General Usage
-You can view the available targets and options by running:
-`make help`
-
-All flows support waveform generation by appending `WAVE=1` to the make command (e.g., `make icarus TB=tb_smoke WAVE=1`). The output format is `.vcd` (or `.fst` for cocotb), and the output files will be named predictively (e.g., `waves_icarus_tb_smoke.vcd`). You can also pass `GUI=1` to automatically open the generated waveform in GTKWave.
-
-### Testbench Files Explained
-*   **`tb_smoke.v`**: A legacy Verilog testbench used for basic "smoke testing" and visual waveform inspection. Provides very basic stimulus.
-*   **`tb_icarus_sv.sv`**: A basic, standalone SystemVerilog testbench. It uses basic procedures and arrays to verify logic, bypassing advanced class features that are unsupported in Icarus Verilog.
-*   **`tb_verilator_uvm.sv`**: A highly structured, pure SystemVerilog class-based environment (similar to UVM architecture: generator, driver, monitor, scoreboard, and coverage). Built to be compiled and run with Verilator for fast execution and functional coverage.
-*   **`tb_cocotb.py`**: A Python-based testing environment using Cocotb. It uses randomized, edge-case, and basic packets to stress test the RTL.
-
-### 1. Cocotb Flow
-- **Command:** `make cocotb [WAVE=1] [GUI=1]`
-- **Description:** Runs the `tb_cocotb.py` test suite. Great for agile, Python-scripted scenarios.
-- **Dependencies:** Icarus Verilog (`iverilog`), Python 3, `cocotb`, and `pytest`.
-
-### 2. Icarus Verilog Flow
-- **Command:** `make icarus [TB=<testbench>] [WAVE=1] [GUI=1]`
-- **Description:** Compiles and runs the specified testbench using the standard, event-driven Icarus simulator. Defaults to `TB=tb_icarus_sv` if not specified. Lightweight and runs anywhere Icarus Verilog is installed.
-- **Dependencies:** Icarus Verilog (`iverilog`).
-
-### 3. Verilator Flow
-- **Command:** `make verilator-uvm [TB=<testbench>] [WAVE=1] [GUI=1]`
-- **Description:** Uses Verilator to compile the specified testbench into C++ for extremely fast simulation. Defaults to `TB=tb_verilator_uvm` if not specified. Highly preferred for exhaustive functional testing.
-- **Dependencies:** Verilator (`verilator`).
+For detailed instructions on running the simulation environments, verifying the design, generating waveforms, and creating functional coverage, please refer to the [Verification Environment Guide](tests/README.md).

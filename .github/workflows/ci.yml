@@ -38,8 +38,8 @@ jobs:
 
     - name: Run Standalone SystemVerilog Testbench (Icarus Verilog)
       run: |
-        make icarus TB=tb_icarus_sv
+        make icarus
 
     - name: Run Pure UVM-Style SV Testbench (Verilator)
       run: |
-        make verilator-uvm TB=tb_verilator_uvm
+        make verilator
