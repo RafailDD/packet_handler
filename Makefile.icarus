@@ -1,9 +1,0 @@
-# Fallback Makefile for running basic functional SV coverage and test scenarios with Icarus
-all: run
-
-run:
-	iverilog -g2012 -o sim.out packet_handler.v packet_handler_tb_sv.sv
-	vvp sim.out
-
-clean:
-	rm -f sim.out wave.vcd

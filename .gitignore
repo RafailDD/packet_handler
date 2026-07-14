@@ -10,7 +10,12 @@ testbench.sv
 uvm/uvm-src/
 
 sim.out
+sim_*.out
 wave.vcd
+waves_*.vcd
+waves_*.fst
+*.vcd
 results.xml
 sim_build/
 sim_test
+tests/logs/

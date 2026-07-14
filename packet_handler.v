@@ -20,6 +20,7 @@
 //     same cycle that o_valid rises (AXI-stream handshake compliant).
 //-----------------------------------------------------------------------------
 
+/* verilator lint_off TIMESCALEMOD */
 module packet_handler (
     /* clocks and resets */
     input  wire         i_clk,
