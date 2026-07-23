@@ -16,6 +16,8 @@ help:
 	@echo "                         Defaults to TB=tb_basic_sv."
 	@echo "  make verilator       : Run Verilator pure SV UVM test flow."
 	@echo "                         Defaults to TB=tb_uvm_sv."
+	@echo "  make synth           : Run Yosys synthesis flow using Sky130 HD library."
+	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
 	@echo ""
 	@echo "Options:"
@@ -116,8 +118,33 @@ endif
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB_CLEAN).vcd & fi
 
 # ==========================================
+# Synthesis Flow (Yosys)
+# ==========================================
+.PHONY: fetch_lib synth synth_parse
+
+LIB_FILE=synth/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+LIB_URL=https://raw.githubusercontent.com/efabless/skywater-pdk-libs-sky130_fd_sc_hd/master/timing/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+fetch_lib:
+	@mkdir -p synth/lib
+	@if [ ! -f $(LIB_FILE) ]; then \
+		echo "Fetching Sky130 standard cell library..."; \
+		wget -q -O $(LIB_FILE) $(LIB_URL); \
+	else \
+		echo "Sky130 standard cell library already present."; \
+	fi
+
+synth: fetch_lib
+	@echo "Running Yosys Synthesis Flow..."
+	@cd synth && yosys -c synth.tcl -l synth.log
+
+synth_parse:
+	@echo "Parsing Synthesis Log..."
+	@python3 synth/scripts/synth_parse.py synth/synth.log
+
+# ==========================================
 # Clean
 # ==========================================
 .PHONY: clean
 clean::
-	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/
+	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v
