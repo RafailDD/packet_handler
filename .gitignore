@@ -19,3 +19,10 @@ results.xml
 sim_build/
 sim_test
 tests/logs/
+synth/lib/*.lib
+synth/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+synth/**/*.lib
+synth/**/*.log
+synth/**/*.rpt
+synth/synth.log
+synth/synth_netlist.v
