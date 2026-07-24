@@ -16,6 +16,7 @@ help:
 	@echo "                         Defaults to TB=tb_basic_sv."
 	@echo "  make verilator       : Run Verilator pure SV UVM test flow."
 	@echo "                         Defaults to TB=tb_uvm_sv."
+	@echo "  make benchmark       : Run performance benchmark test for python logic."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
 	@echo ""
 	@echo "Options:"
@@ -114,6 +115,13 @@ else
 endif
 	./obj_dir/Vpacket_handler 2>&1 | tee -a tests/logs/sim_verilator_$(TB_CLEAN).log
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB_CLEAN).vcd & fi
+
+# ==========================================
+# Benchmark Flow
+# ==========================================
+.PHONY: benchmark
+benchmark:
+	python3 tests/benchmark.py
 
 # ==========================================
 # Clean
