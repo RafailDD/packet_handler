@@ -14,11 +14,9 @@ async def reset_dut(dut):
     await Timer(10, unit="ns")
 
 def send_bytes_little_endian(dut, val, bytes_count):
-    res = 0
-    for i in range(bytes_count):
-        b = (val >> (8 * i)) & 0xFF
-        res |= (b << (8 * (bytes_count - 1 - i)))
-    return res
+    # Mask to ensure val fits within bytes_count before conversion to avoid OverflowError
+    val_masked = val & ((1 << (8 * bytes_count)) - 1)
+    return int.from_bytes(val_masked.to_bytes(bytes_count, 'little'), 'big')
 
 async def send_packet(dut, stream_id, seq_number, data_words):
     # Calculate msgLength: 8 bytes header + data_words * 4 bytes
