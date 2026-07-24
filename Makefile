@@ -18,6 +18,7 @@ help:
 	@echo "                         Defaults to TB=tb_uvm_sv."
 	@echo "  make synth           : Run Yosys synthesis flow using Sky130 HD library."
 	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
+	@echo "  make benchmark       : Run performance benchmark test for python logic."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
 	@echo ""
 	@echo "Options:"
@@ -141,6 +142,11 @@ synth: fetch_lib
 synth_parse:
 	@echo "Parsing Synthesis Log..."
 	@python3 synth/scripts/synth_parse.py synth/synth.log
+# Benchmark Flow
+# ==========================================
+.PHONY: benchmark
+benchmark:
+	python3 tests/benchmark.py
 
 # ==========================================
 # Clean
