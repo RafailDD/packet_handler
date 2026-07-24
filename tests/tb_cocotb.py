@@ -274,8 +274,8 @@ async def test_randomized_packets(dut):
             out_val = 0
 
         expected_data = 0
-        for i, word in enumerate(reversed(data)):
-            expected_data |= (word << (i * 32))
+        for word in data:
+            expected_data = (expected_data << 32) | word
 
         mask = (1 << (num_words * 32)) - 1
         out_val_masked = out_val & mask
