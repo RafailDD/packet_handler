@@ -1,0 +1,14 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1784979927" />
+    <testcase name="test_reset" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="92" time="0.0013339519500732422" sim_time_ns="20.0" ratio_time="14993.043789097408" />
+    <testcase name="test_basic_packet" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="102" time="0.0018205642700195312" sim_time_ns="110.0" ratio_time="60420.82765845993" />
+    <testcase name="test_multiple_valid_streams" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="134" time="0.0032227039337158203" sim_time_ns="220.0" ratio_time="68265.65658060221" />
+    <testcase name="test_dropped_lost_packet" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="175" time="0.0024945735931396484" sim_time_ns="150.0" ratio_time="60130.5170601166" />
+    <testcase name="test_min_length_packet" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="219" time="0.0012326240539550781" sim_time_ns="80.0" ratio_time="64902.189555125726" />
+    <testcase name="test_randomized_packets" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="275" time="0.07689046859741211" sim_time_ns="6040.0" ratio_time="78553.29939039137" />
+    <testcase name="test_fifo_full_backpressure" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="321" time="0.07420992851257324" sim_time_ns="5889.999999999999" ratio_time="79369.43368705803" />
+    <testcase name="test_max_length_packet" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="370" time="0.0027937889099121094" sim_time_ns="170.0" ratio_time="60849.26437958696" />
+    <testcase name="test_mid_packet_reset" classname="tb_cocotb" file="/app/tests/tb_cocotb.py" lineno="436" time="0.0022842884063720703" sim_time_ns="150.0" ratio_time="65665.9638868594" />
+  </testsuite>
+</testsuites>

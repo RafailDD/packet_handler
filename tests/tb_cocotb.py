@@ -13,6 +13,39 @@ async def reset_dut(dut):
     dut.i_rst_n.value = 1
     await Timer(10, unit="ns")
 
+
+async def send_word_bp(dut, word, is_last=False):
+    """Sends a single word, respecting o_ready backpressure."""
+    dut.i_data.value = word
+    dut.i_valid.value = 1
+    dut.i_last.value = 1 if is_last else 0
+
+    # Wait untilDUT is ready to accept
+    while dut.o_ready.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    await RisingEdge(dut.i_clk)
+
+async def send_packet_bp(dut, stream_id, seq_number, data_words):
+    """Sends a packet, respecting o_ready backpressure on every word."""
+    msg_length = 8 + len(data_words) * 4
+
+    word1 = ((msg_length & 0xFF) << 24) | (((msg_length >> 8) & 0xFF) << 16) | \
+            ((stream_id & 0xFF) << 8) | (((stream_id >> 8) & 0xFF))
+
+    word2 = ((seq_number & 0xFF) << 24) | (((seq_number >> 8) & 0xFF) << 16) | \
+            (((seq_number >> 16) & 0xFF) << 8) | (((seq_number >> 24) & 0xFF))
+
+    await send_word_bp(dut, word1)
+    await send_word_bp(dut, word2)
+
+    for i, data_word in enumerate(data_words):
+        is_last = (i == len(data_words) - 1)
+        await send_word_bp(dut, data_word, is_last=is_last)
+
+    dut.i_valid.value = 0
+    dut.i_last.value = 0
+
 def send_bytes_little_endian(dut, val, bytes_count):
     # Mask to ensure val fits within bytes_count before conversion to avoid OverflowError
     val_masked = val & ((1 << (8 * bytes_count)) - 1)
@@ -286,6 +319,121 @@ async def test_randomized_packets(dut):
             await RisingEdge(dut.i_clk)
 
 @cocotb.test()
+async def test_fifo_full_backpressure(dut):
+    """Test FIFO full conditions and backpressure (o_ready)."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    num_packets = 65
+    data_words_per_packet = 2
+
+    dut.i_ready.value = 0
+
+    async def sender_task():
+        for i in range(num_packets):
+            data = [i, i+1]
+            await send_packet_bp(dut, stream_id=1, seq_number=i+1, data_words=data)
+
+    sender = cocotb.start_soon(sender_task())
+
+    while dut.o_ready.value == 1:
+        await RisingEdge(dut.i_clk)
+
+    for _ in range(5):
+        assert dut.o_ready.value == 0, "o_ready should remain 0 when FIFO is full and i_ready is 0"
+        await RisingEdge(dut.i_clk)
+
+    dut.i_ready.value = 1
+
+    for i in range(num_packets):
+        while dut.o_valid.value == 0:
+            await RisingEdge(dut.i_clk)
+
+        try:
+            out_val = dut.o_data.value.to_unsigned()
+        except Exception:
+            out_val = 0
+
+        expected_data = (i << 32) | (i + 1)
+        mask = (1 << (data_words_per_packet * 32)) - 1
+        out_val_masked = out_val & mask
+
+        assert out_val_masked == expected_data, f"Output data mismatch for packet {i}. Expected {hex(expected_data)}, got {hex(out_val_masked)}"
+
+        while dut.o_valid.value == 1:
+            await RisingEdge(dut.i_clk)
+
+    await sender
+
+    assert dut.o_packetLost.value == 0, "packetLost should not be asserted"
+
+@cocotb.test()
+async def test_max_length_packet(dut):
+    """Test sending the maximum possible packet length (45 bytes)."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    data = [
+        0x11223344, 0x55667788, 0x99AABBCC, 0xDDEEFF00,
+        0x12345678, 0x9ABCDEF0, 0x0FEDCBA9, 0x87654321,
+        0xCAFEBABE, 0xDEADBEEF
+    ]
+
+    msg_length = 45
+    stream_id = 15
+    seq_number = 1
+
+    while dut.o_ready.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    word1 = ((msg_length & 0xFF) << 24) | (((msg_length >> 8) & 0xFF) << 16) | \
+            ((stream_id & 0xFF) << 8) | (((stream_id >> 8) & 0xFF))
+    dut.i_data.value = word1
+    dut.i_valid.value = 1
+    dut.i_last.value = 0
+    await RisingEdge(dut.i_clk)
+
+    word2 = ((seq_number & 0xFF) << 24) | (((seq_number >> 8) & 0xFF) << 16) | \
+            (((seq_number >> 16) & 0xFF) << 8) | (((seq_number >> 24) & 0xFF))
+    dut.i_data.value = word2
+    dut.i_valid.value = 1
+    await RisingEdge(dut.i_clk)
+
+    for i, data_word in enumerate(data):
+        dut.i_data.value = data_word
+        dut.i_valid.value = 1
+        if i == len(data) - 1:
+            dut.i_last.value = 1
+        else:
+            dut.i_last.value = 0
+        await RisingEdge(dut.i_clk)
+
+    dut.i_valid.value = 0
+    dut.i_last.value = 0
+
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    assert dut.o_packetLost.value == 0
+
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    await RisingEdge(dut.i_clk)
+
+    try:
+        out_val = dut.o_data.value.to_unsigned()
+    except Exception:
+        out_val = 0
+
+    expected_data = (data[0] & 0xFF)
+    for word in data[1:]:
+        expected_data = (expected_data << 32) | word
+
+    assert out_val == expected_data, f"Output data mismatch. Expected {hex(expected_data)}, got {hex(out_val)}"
+
+    dut.i_ready.value = 0
+
+@cocotb.test()
 async def test_mid_packet_reset(dut):
     """Test dropping reset in the middle of driving a packet's payload data, then recovering."""
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
@@ -299,7 +447,6 @@ async def test_mid_packet_reset(dut):
     while dut.o_ready.value != 1:
         await RisingEdge(dut.i_clk)
 
-    # Word 1: msgLength and streamId
     word1 = ((msg_length & 0xFF) << 24) | (((msg_length >> 8) & 0xFF) << 16) | \
             ((stream_id & 0xFF) << 8) | (((stream_id >> 8) & 0xFF))
     dut.i_data.value = word1
@@ -307,14 +454,12 @@ async def test_mid_packet_reset(dut):
     dut.i_last.value = 0
     await RisingEdge(dut.i_clk)
 
-    # Word 2: seqNumber
     word2 = ((seq_number & 0xFF) << 24) | (((seq_number >> 8) & 0xFF) << 16) | \
             (((seq_number >> 16) & 0xFF) << 8) | (((seq_number >> 24) & 0xFF))
     dut.i_data.value = word2
     dut.i_valid.value = 1
     await RisingEdge(dut.i_clk)
 
-    # Send a random number of data words (but not all of them)
     reset_cycle = random.randint(1, len(data_words) - 1)
     for i in range(reset_cycle):
         dut.i_data.value = data_words[i]
@@ -322,7 +467,6 @@ async def test_mid_packet_reset(dut):
         dut.i_last.value = 0
         await RisingEdge(dut.i_clk)
 
-    # Drop reset mid-packet
     dut.i_rst_n.value = 0
     dut.i_valid.value = 0
     await Timer(25, unit="ns")
@@ -332,7 +476,6 @@ async def test_mid_packet_reset(dut):
     while dut.o_ready.value != 1:
         await RisingEdge(dut.i_clk)
 
-    # Send a completely new packet with a random seqNumber
     new_seq_number = random.randint(1, 1000)
     new_data = [0xAAAAAAAA, 0xBBBBBBBB]
     await send_packet(dut, stream_id, new_seq_number, new_data)

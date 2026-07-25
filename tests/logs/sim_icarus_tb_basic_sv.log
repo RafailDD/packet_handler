@@ -1,0 +1,13 @@
+tests/tb_basic_sv.sv:75: warning: Static variable initialization requires explicit lifetime in this context.
+[105000] SCOREBOARD: Received output payload transaction.
+[175000] SCOREBOARD: Received output payload transaction.
+[245000] SCOREBOARD: Received output payload transaction.
+[315000] SCOREBOARD: Received output payload transaction.
+[385000] SCOREBOARD: Received output payload transaction.
+[405000] SCOREBOARD: Packet Lost detected!
+[435000] SCOREBOARD: Received output payload transaction.
+--------------------------------
+Test finished. Packets received: 6, Errors: 0
+STATUS: PASSED
+--------------------------------
+tests/tb_basic_sv.sv:138: $finish called at 515000 (1ps)
