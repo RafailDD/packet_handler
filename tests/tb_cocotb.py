@@ -284,3 +284,64 @@ async def test_randomized_packets(dut):
 
         for _ in range(random.randint(0, 3)):
             await RisingEdge(dut.i_clk)
+
+@cocotb.test()
+async def test_mid_packet_reset(dut):
+    """Test dropping reset in the middle of driving a packet's payload data, then recovering."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    stream_id = 7
+    seq_number = 10
+    data_words = [0x11111111, 0x22222222, 0x33333333, 0x44444444, 0x55555555]
+    msg_length = 8 + len(data_words) * 4
+
+    while dut.o_ready.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Word 1: msgLength and streamId
+    word1 = ((msg_length & 0xFF) << 24) | (((msg_length >> 8) & 0xFF) << 16) | \
+            ((stream_id & 0xFF) << 8) | (((stream_id >> 8) & 0xFF))
+    dut.i_data.value = word1
+    dut.i_valid.value = 1
+    dut.i_last.value = 0
+    await RisingEdge(dut.i_clk)
+
+    # Word 2: seqNumber
+    word2 = ((seq_number & 0xFF) << 24) | (((seq_number >> 8) & 0xFF) << 16) | \
+            (((seq_number >> 16) & 0xFF) << 8) | (((seq_number >> 24) & 0xFF))
+    dut.i_data.value = word2
+    dut.i_valid.value = 1
+    await RisingEdge(dut.i_clk)
+
+    # Send a random number of data words (but not all of them)
+    reset_cycle = random.randint(1, len(data_words) - 1)
+    for i in range(reset_cycle):
+        dut.i_data.value = data_words[i]
+        dut.i_valid.value = 1
+        dut.i_last.value = 0
+        await RisingEdge(dut.i_clk)
+
+    # Drop reset mid-packet
+    dut.i_rst_n.value = 0
+    dut.i_valid.value = 0
+    await Timer(25, unit="ns")
+    dut.i_rst_n.value = 1
+    await Timer(10, unit="ns")
+
+    while dut.o_ready.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Send a completely new packet with a random seqNumber
+    new_seq_number = random.randint(1, 1000)
+    new_data = [0xAAAAAAAA, 0xBBBBBBBB]
+    await send_packet(dut, stream_id, new_seq_number, new_data)
+
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    assert dut.o_packetLost.value == 0, f"packetLost asserted incorrectly after reset with new seqNumber {new_seq_number}"
+
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    dut.i_ready.value = 0
