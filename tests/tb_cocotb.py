@@ -284,3 +284,70 @@ async def test_randomized_packets(dut):
 
         for _ in range(random.randint(0, 3)):
             await RisingEdge(dut.i_clk)
+
+@cocotb.test()
+async def test_receiver_not_ready(dut):
+    """Test stalling when the receiver is not ready (i_ready low)."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    # Packet 1
+    data1 = [0x11111111, 0x22222222, 0x33333333]
+    await send_packet(dut, stream_id=7, seq_number=1, data_words=data1)
+
+    # Wait for o_valid to go high indicating packet is ready
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Verify first packet's data
+    expected_data1 = (data1[0] << 64) | (data1[1] << 32) | data1[2]
+    try:
+        out_val = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    except Exception:
+        out_val = 0
+    assert out_val == expected_data1, f"Packet 1 data mismatch before stall. Expected {hex(expected_data1)}, got {hex(out_val)}"
+
+    # Hold i_ready low for 10 clock cycles to simulate stall
+    dut.i_ready.value = 0
+
+    # Concurrently send a second packet while stalled
+    # Note: send_packet checks o_ready, which might eventually go low if FIFO fills,
+    # but the FIFO is 256 deep so it will easily accept this second packet.
+    data2 = [0x44444444, 0x55555555]
+    cocotb.start_soon(send_packet(dut, stream_id=7, seq_number=2, data_words=data2))
+
+    for _ in range(10):
+        await RisingEdge(dut.i_clk)
+        # o_valid should remain high and data should remain stable
+        assert dut.o_valid.value == 1, "o_valid should remain high while stalled"
+        try:
+            out_val = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        except Exception:
+            out_val = 0
+        assert out_val == expected_data1, "o_data should remain stable while stalled"
+
+    # Assert i_ready to consume first packet
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    dut.i_ready.value = 0
+
+    # Wait for o_valid to go low first (consuming packet 1)
+    while dut.o_valid.value == 1:
+        await RisingEdge(dut.i_clk)
+
+    # Wait for o_valid to go high again for the second packet
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Verify second packet's data
+    expected_data2 = (data2[0] << 32) | data2[1]
+    try:
+        out_val2 = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    except Exception:
+        out_val2 = 0
+
+    assert out_val2 == expected_data2, f"Packet 2 data mismatch. Expected {hex(expected_data2)}, got {hex(out_val2)}"
+
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    dut.i_ready.value = 0
