@@ -525,3 +525,97 @@ async def test_max_length_packet(dut):
     assert out_val == expected_data, f"Output data mismatch. Expected {hex(expected_data)}, got {hex(out_val)}"
 
     dut.i_ready.value = 0
+
+@cocotb.test()
+async def test_mid_packet_reset(dut):
+    """Test dropping reset in the middle of driving a packet's payload data, then recovering and driving a new packet."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    # Packet 1 (interrupted)
+    stream_id_1 = 3
+    seq_number_1 = 1
+    data_words_1 = [0x11111111, 0x22222222, 0x33333333, 0x44444444]
+    msg_length_1 = 8 + len(data_words_1) * 4
+
+    # Wait until DUT is ready
+    while dut.o_ready.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Word 1: msgLength (2 bytes), streamId (2 bytes)
+    word1 = ((msg_length_1 & 0xFF) << 24) | (((msg_length_1 >> 8) & 0xFF) << 16) | \
+            ((stream_id_1 & 0xFF) << 8) | (((stream_id_1 >> 8) & 0xFF))
+    dut.i_data.value = word1
+    dut.i_valid.value = 1
+    dut.i_last.value = 0
+    await RisingEdge(dut.i_clk)
+
+    # Word 2: seqNumber (4 bytes)
+    word2 = ((seq_number_1 & 0xFF) << 24) | (((seq_number_1 >> 8) & 0xFF) << 16) | \
+            (((seq_number_1 >> 16) & 0xFF) << 8) | (((seq_number_1 >> 24) & 0xFF))
+    dut.i_data.value = word2
+    dut.i_valid.value = 1
+    await RisingEdge(dut.i_clk)
+
+    # Send first two data words
+    for i in range(2):
+        dut.i_data.value = data_words_1[i]
+        dut.i_valid.value = 1
+        dut.i_last.value = 0
+        await RisingEdge(dut.i_clk)
+
+    # Mid-packet reset
+    dut.i_rst_n.value = 0
+
+    # Check that outputs reflect reset state
+    # Notice we need a tiny delay or a clock edge to let combinational logic settle
+    # if it's dependent on reset, but most are sequential.
+    await Timer(1, unit="ns")
+    assert dut.o_valid.value == 0, "o_valid should drop after reset"
+    assert dut.o_packetLost.value == 0, "o_packetLost should be 0 after reset"
+
+    # o_ready comes from ~fifo_full (which is based on fifo_count).
+    # Since fifo_count clears on next clk posedge or negedge rst_n, we wait a cycle.
+    await RisingEdge(dut.i_clk)
+    assert dut.o_ready.value == 1, "o_ready should be high after reset clears FIFO"
+
+    # Hold reset for a few cycles
+    for _ in range(5):
+        await RisingEdge(dut.i_clk)
+
+    # Recover from reset
+    dut.i_rst_n.value = 1
+    dut.i_valid.value = 0
+    dut.i_last.value = 0
+    await RisingEdge(dut.i_clk)
+    await RisingEdge(dut.i_clk)
+
+    # Packet 2 (new, after recovery)
+    stream_id_2 = 3
+    seq_number_2 = 5  # Different seq_number, disjoint from packet 1
+    data_words_2 = [0x55555555, 0x66666666]
+
+    await send_packet(dut, stream_id_2, seq_number_2, data_words_2)
+
+    # Wait for o_valid for packet 2
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Verify that packetLost was not asserted because tracker_valid was cleared
+    assert dut.o_packetLost.value == 0, "packetLost should not be asserted for first packet after reset"
+
+    # Consume packet 2
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    await RisingEdge(dut.i_clk)
+
+    # Verify packet 2 data
+    expected_data_2 = (data_words_2[0] << 32) | data_words_2[1]
+    try:
+        out_val = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    except Exception:
+        out_val = 0
+
+    assert out_val == expected_data_2, f"Output data mismatch. Expected {hex(expected_data_2)}, got {hex(out_val)}"
+
+    dut.i_ready.value = 0
