@@ -319,32 +319,107 @@ async def test_randomized_packets(dut):
             await RisingEdge(dut.i_clk)
 
 @cocotb.test()
+async def test_receiver_not_ready(dut):
+    """Test stalling when the receiver is not ready (i_ready low)."""
+    cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    # Packet 1
+    data1 = [0x11111111, 0x22222222, 0x33333333]
+    await send_packet(dut, stream_id=7, seq_number=1, data_words=data1)
+
+    # Wait for o_valid to go high indicating packet is ready
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Verify first packet's data
+    expected_data1 = (data1[0] << 64) | (data1[1] << 32) | data1[2]
+    try:
+        out_val = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    except Exception:
+        out_val = 0
+    assert out_val == expected_data1, f"Packet 1 data mismatch before stall. Expected {hex(expected_data1)}, got {hex(out_val)}"
+
+    # Hold i_ready low for 10 clock cycles to simulate stall
+    dut.i_ready.value = 0
+
+    # Concurrently send a second packet while stalled
+    # Note: send_packet checks o_ready, which might eventually go low if FIFO fills,
+    # but the FIFO is 256 deep so it will easily accept this second packet.
+    data2 = [0x44444444, 0x55555555]
+    cocotb.start_soon(send_packet(dut, stream_id=7, seq_number=2, data_words=data2))
+
+    for _ in range(10):
+        await RisingEdge(dut.i_clk)
+        # o_valid should remain high and data should remain stable
+        assert dut.o_valid.value == 1, "o_valid should remain high while stalled"
+        try:
+            out_val = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        except Exception:
+            out_val = 0
+        assert out_val == expected_data1, "o_data should remain stable while stalled"
+
+    # Assert i_ready to consume first packet
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
+    dut.i_ready.value = 0
+
+    # Wait for o_valid to go low first (consuming packet 1)
+    while dut.o_valid.value == 1:
+        await RisingEdge(dut.i_clk)
+
+    # Wait for o_valid to go high again for the second packet
+    while dut.o_valid.value != 1:
+        await RisingEdge(dut.i_clk)
+
+    # Verify second packet's data
+    expected_data2 = (data2[0] << 32) | data2[1]
+    try:
+        out_val2 = dut.o_data.value.to_unsigned() & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    except Exception:
+        out_val2 = 0
+
+    assert out_val2 == expected_data2, f"Packet 2 data mismatch. Expected {hex(expected_data2)}, got {hex(out_val2)}"
+
+    dut.i_ready.value = 1
+    await RisingEdge(dut.i_clk)
 async def test_fifo_full_backpressure(dut):
     """Test FIFO full conditions and backpressure (o_ready)."""
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
+    # We will send 65 packets, each having 2 header words + 2 data words = 4 words.
+    # Total words = 65 * 4 = 260 words.
+    # The FIFO depth is 256. This means the FIFO will fill up and assert o_ready=0.
+
     num_packets = 65
     data_words_per_packet = 2
 
+    # Do not assert i_ready initially so the FIFO fills up
     dut.i_ready.value = 0
 
     async def sender_task():
         for i in range(num_packets):
             data = [i, i+1]
+            # using the backpressure-aware packet sender
             await send_packet_bp(dut, stream_id=1, seq_number=i+1, data_words=data)
 
     sender = cocotb.start_soon(sender_task())
 
+    # Wait for the DUT to assert backpressure (o_ready == 0)
+    # The FIFO should fill up and then o_ready should drop
     while dut.o_ready.value == 1:
         await RisingEdge(dut.i_clk)
 
+    # Confirm it stays 0 for a few cycles
     for _ in range(5):
         assert dut.o_ready.value == 0, "o_ready should remain 0 when FIFO is full and i_ready is 0"
         await RisingEdge(dut.i_clk)
 
+    # Now begin asserting i_ready to drain the FIFO
     dut.i_ready.value = 1
 
+    # Receive all the packets
     for i in range(num_packets):
         while dut.o_valid.value == 0:
             await RisingEdge(dut.i_clk)
@@ -360,19 +435,24 @@ async def test_fifo_full_backpressure(dut):
 
         assert out_val_masked == expected_data, f"Output data mismatch for packet {i}. Expected {hex(expected_data)}, got {hex(out_val_masked)}"
 
+        # Wait for o_valid to go low before waiting for next packet
         while dut.o_valid.value == 1:
             await RisingEdge(dut.i_clk)
 
+    # Wait for sender task to finish
     await sender
 
     assert dut.o_packetLost.value == 0, "packetLost should not be asserted"
-
-@cocotb.test()
 async def test_max_length_packet(dut):
-    """Test sending the maximum possible packet length (45 bytes)."""
+    """Test sending the maximum possible packet length (45 bytes).
+    This means header (8 bytes) + 37 bytes data.
+    Since data is 32 bits (4 bytes) wide, we send 10 words,
+    and exactly 296 bits (37 bytes) are retained in o_data.
+    """
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     await reset_dut(dut)
 
+    # 10 data words
     data = [
         0x11223344, 0x55667788, 0x99AABBCC, 0xDDEEFF00,
         0x12345678, 0x9ABCDEF0, 0x0FEDCBA9, 0x87654321,
@@ -386,6 +466,7 @@ async def test_max_length_packet(dut):
     while dut.o_ready.value != 1:
         await RisingEdge(dut.i_clk)
 
+    # Header Word 1
     word1 = ((msg_length & 0xFF) << 24) | (((msg_length >> 8) & 0xFF) << 16) | \
             ((stream_id & 0xFF) << 8) | (((stream_id >> 8) & 0xFF))
     dut.i_data.value = word1
@@ -393,12 +474,14 @@ async def test_max_length_packet(dut):
     dut.i_last.value = 0
     await RisingEdge(dut.i_clk)
 
+    # Header Word 2
     word2 = ((seq_number & 0xFF) << 24) | (((seq_number >> 8) & 0xFF) << 16) | \
             (((seq_number >> 16) & 0xFF) << 8) | (((seq_number >> 24) & 0xFF))
     dut.i_data.value = word2
     dut.i_valid.value = 1
     await RisingEdge(dut.i_clk)
 
+    # Data Words
     for i, data_word in enumerate(data):
         dut.i_data.value = data_word
         dut.i_valid.value = 1
@@ -425,6 +508,13 @@ async def test_max_length_packet(dut):
     except Exception:
         out_val = 0
 
+    # Calculate expected data:
+    # 37 bytes = 296 bits.
+    # Data is shifted in word by word.
+    # 10 words * 32 bits = 320 bits.
+    # The first word's top 24 bits are shifted out and lost.
+    # So the expected data is the lower 8 bits of the first word,
+    # followed by the remaining 9 words.
     expected_data = (data[0] & 0xFF)
     for word in data[1:]:
         expected_data = (expected_data << 32) | word
@@ -487,4 +577,10 @@ async def test_mid_packet_reset(dut):
 
     dut.i_ready.value = 1
     await RisingEdge(dut.i_clk)
+    # The RTL shift register logic:
+    # shiftReg <= {shiftReg[263:0], fifo_data};
+    # After 10 words, the first 3 bytes are shifted out of the top.
+
+    assert out_val == expected_data, f"Output data mismatch. Expected {hex(expected_data)}, got {hex(out_val)}"
+
     dut.i_ready.value = 0
