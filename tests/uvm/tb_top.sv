@@ -21,17 +21,18 @@ class packet_item extends uvm_sequence_item;
     rand bit [15:0] msgLength;
     rand bit [15:0] streamId;
     rand bit [31:0] seqNumber;
-    bit [7:0] payload[64];
+    rand bit [7:0]  payload[];
 
     // Constraints
     constraint c_msgLength { msgLength inside {[9:45]}; }
     constraint c_streamId { streamId inside {[1:32]}; }
+    constraint c_payload_size { payload.size() == (msgLength - 8); }
 
     `uvm_object_utils_begin(packet_item)
         `uvm_field_int(msgLength, UVM_ALL_ON)
         `uvm_field_int(streamId, UVM_ALL_ON)
         `uvm_field_int(seqNumber, UVM_ALL_ON)
-        //`uvm_field_array_int(payload, UVM_ALL_ON)
+        `uvm_field_array_int(payload, UVM_ALL_ON)
     `uvm_object_utils_end
 
     function new(string name = "packet_item");
@@ -76,8 +77,8 @@ class packet_driver extends uvm_driver #(packet_item);
         @(posedge vif.clk);
         while(!vif.o_ready) @(posedge vif.clk);
 
-        header_w1 = {item.msgLength[7:0], item.msgLength[15:8], item.streamId[7:0], item.streamId[15:8]};
-        header_w2 = {item.seqNumber[7:0], item.seqNumber[15:8], item.seqNumber[23:16], item.seqNumber[31:24]};
+        header_w1 = {item.streamId[15:8], item.streamId[7:0], item.msgLength[15:8], item.msgLength[7:0]};
+        header_w2 = {item.seqNumber[31:24], item.seqNumber[23:16], item.seqNumber[15:8], item.seqNumber[7:0]};
 
         vif.valid <= 1;
         vif.data <= header_w1;
@@ -109,12 +110,24 @@ class packet_monitor extends uvm_monitor;
     packet_item req_sampled;
 
     // Covergroup for coverage
-
-
+    covergroup packet_cg;
+        option.per_instance = 1;
+        cp_msgLength: coverpoint req_sampled.msgLength {
+            bins min = {9};
+            bins mid = {[10:44]};
+            bins max = {45};
+        }
+        cp_streamId: coverpoint req_sampled.streamId {
+            bins id1 = {1};
+            bins others = {[2:31]};
+            bins id32 = {32};
+        }
+    endgroup
 
     function new(string name, uvm_component parent);
         super.new(name, parent);
         ap = new("ap", this);
+        packet_cg = new();
     endfunction
 
     function void build_phase(uvm_phase phase);
@@ -140,6 +153,7 @@ class packet_monitor extends uvm_monitor;
                 // Send the transaction to the scoreboard
                 ap.write(pkt);
                 req_sampled = pkt;
+                packet_cg.sample();
             end
         end
     endtask
@@ -228,7 +242,6 @@ class packet_seq extends uvm_sequence #(packet_item);
     endfunction
 
     task body();
-
         // Test normal packets
         for(int i = 1; i <= 5; i++) begin
             req = packet_item::type_id::create("req");
@@ -238,6 +251,7 @@ class packet_seq extends uvm_sequence #(packet_item);
             req.streamId = 15;
             finish_item(req);
         end
+
         // Test missing packet (seq 7 instead of 6) to trigger packetLost
         req = packet_item::type_id::create("req");
         start_item(req);
@@ -245,6 +259,15 @@ class packet_seq extends uvm_sequence #(packet_item);
         req.seqNumber = 7;
         req.streamId = 15;
         finish_item(req);
+
+        // Random stream packets
+        for(int i = 1; i <= 10; i++) begin
+            req = packet_item::type_id::create("req");
+            start_item(req);
+            assert(req.randomize());
+            req.seqNumber = i;
+            finish_item(req);
+        end
     endtask
 endclass
 

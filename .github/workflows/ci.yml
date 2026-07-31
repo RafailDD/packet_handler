@@ -43,3 +43,19 @@ jobs:
     - name: Run Pure UVM-Style SV Testbench (Verilator)
       run: |
         make verilator
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build Xezim Simulator
+      run: |
+        cd ..
+        git clone https://github.com/aionhw/xezim-core.git
+        git clone https://github.com/aionhw/xezim.git
+        cd xezim
+        cargo build --release
+
+    - name: Run Standard UVM Testbench (Xezim)
+      run: |
+        export PATH="$GITHUB_WORKSPACE/../xezim/target/release:$PATH"
+        make xezim_uvm

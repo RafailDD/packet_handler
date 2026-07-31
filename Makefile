@@ -16,6 +16,7 @@ help:
 	@echo "                         Defaults to TB=tb_basic_sv."
 	@echo "  make verilator       : Run Verilator pure SV UVM test flow."
 	@echo "                         Defaults to TB=tb_uvm_sv."
+	@echo "  make xezim_uvm       : Run full UVM testbench via xezim."
 	@echo "  make synth           : Run Yosys synthesis flow using Sky130 HD library."
 	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
 	@echo "  make benchmark       : Run performance benchmark test for python logic."
@@ -117,6 +118,15 @@ else
 endif
 	./obj_dir/Vpacket_handler 2>&1 | tee -a tests/logs/sim_verilator_$(TB_CLEAN).log
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB_CLEAN).vcd & fi
+
+# ==========================================
+# Xezim UVM Flow
+# ==========================================
+.PHONY: xezim_uvm
+
+xezim_uvm:
+	@echo "Running UVM tests via xezim..."
+	$(MAKE) -C tests/uvm sim
 
 # ==========================================
 # Synthesis Flow (Yosys)
