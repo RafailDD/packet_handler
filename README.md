@@ -145,6 +145,7 @@ Tools used for the project:
 - [ ] Add project file structure
 - [ ] Create testbench with cocotb or other tools
 - [ ] Explore open source flows and tools (OSS Cad Suite, ProjectF, OpenROAD) and how they fit with the project's goals
+- [ ] Create an installation script for OSS Cad Suite, cocotb, and xezim
 - [ ] Verify design, post code and functional coverage
 - [ ] Explore FPGA options to target specific technologies
 - [ ] Look into synthesis options, explore libraries for maximum clock frequency

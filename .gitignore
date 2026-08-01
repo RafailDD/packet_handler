@@ -26,3 +26,5 @@ synth/**/*.log
 synth/**/*.rpt
 synth/synth.log
 synth/synth_netlist.v
+xezim_cov.json
+uvm-src/
