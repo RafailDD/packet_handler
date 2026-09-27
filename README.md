@@ -135,7 +135,9 @@ The goal for the documentation is to be fully stand-alone and will be enriched w
 
 Tools used for the project:
 - [EDA Playground](https://edaplayground.com/)
-- [Verilator](https://www.veripool.org/verilator/)
+- [Verilator](https://www.veripool.org/verilator/) (including the UVM flow, based on [GettingVerilatorStartedWithUVM](https://github.com/MikeCovrado/GettingVerilatorStartedWithUVM))
+- [xezim](https://github.com/aionhw/xezim)
+- [cocotb](https://www.cocotb.org/)
 - [TerosHDL](https://terostechnology.github.io/terosHDLdoc/)
 - [Sigasi Visual HDL](https://www.sigasi.com/) Community Edition
 - [Wavedrom](https://wavedrom.com/)
@@ -146,10 +148,22 @@ Tools used for the project:
 - [ ] Create testbench with cocotb or other tools
 - [ ] Explore open source flows and tools (OSS Cad Suite, ProjectF, OpenROAD) and how they fit with the project's goals
 - [ ] Create an installation script for OSS Cad Suite, cocotb, and xezim
-- [ ] Verify design, post code and functional coverage
+- [ ] Verify design, post code and functional coverage (code coverage available via `make verilator_uvm`)
 - [ ] Explore FPGA options to target specific technologies
 - [ ] Look into synthesis options, explore libraries for maximum clock frequency
 
 ## Dev Guide: Simulation Flows
 
 For detailed instructions on running the simulation environments, verifying the design, generating waveforms, and creating functional coverage, please refer to the [Verification Environment Guide](tests/README.md).
+
+Quick reference (`make help` lists every option):
+
+| Flow | Command | Simulator |
+| ---- | ------- | --------- |
+| cocotb (Python) | `make cocotb` | Icarus Verilog |
+| Standalone SV testbench | `make icarus` | Icarus Verilog |
+| UVM-style pure SV testbench | `make verilator` | Verilator |
+| Standard UVM | `make xezim_uvm` | xezim |
+| Standard UVM + code coverage | `make verilator_uvm` | Verilator v5.052+ |
+
+The standard UVM testbench is shared by both UVM flows. See [tests/uvm/README.md](tests/uvm/README.md).

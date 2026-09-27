@@ -326,6 +326,13 @@ module tb_top;
         #20 rst_n = 1;
     end
 
+`ifdef WAVE
+    initial begin
+        $dumpfile(`WAVE_FILE);
+        $dumpvars(0, tb_top.dut);
+    end
+`endif
+
     initial begin
         vif.ready_in = 1; // Always ready receiver for simplicity
         uvm_config_db#(virtual packet_if)::set(null, "*", "vif", vif);

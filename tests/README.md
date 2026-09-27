@@ -1,8 +1,8 @@
 # Verification Environment
 
-This repository provides a unified Makefile to manage three distinct simulation flows, enabling robust verification of the `packet_handler` module. Each flow serves a different purpose, and every testbench file has a specific role.
+This repository provides a unified Makefile to manage several simulation flows, enabling robust verification of the `packet_handler` module. Each flow serves a different purpose, and every testbench file has a specific role.
 
-The UVM tests are written entirely in SystemVerilog (IEEE 1800.2). However, open source simulators (like Verilator or Icarus Verilog) do not fully support the complete UVM standard for executing simulation yet.
+The UVM tests are written entirely in SystemVerilog (IEEE 1800.2). Icarus Verilog cannot run UVM, and until recently neither could Verilator. Recent Verilator releases (v5.052) and the xezim simulator can now run the standard UVM library.
 
 To solve this, we provide multiple pathways in the `tests/` directory:
 
@@ -12,7 +12,7 @@ To solve this, we provide multiple pathways in the `tests/` directory:
 *   **`tb_basic_sv.sv`**: A basic, standalone SystemVerilog testbench. It uses basic procedures and arrays to verify logic, bypassing advanced class features that are unsupported in Icarus Verilog.
 *   **`tb_uvm_sv.sv`**: A highly structured, pure SystemVerilog class-based environment (similar to UVM architecture: generator, driver, monitor, scoreboard, and coverage). Built to be compiled and run with Verilator for fast execution and functional coverage.
 *   **`tb_cocotb.py`**: A Python-based testing environment using Cocotb. It uses randomized, edge-case, and basic packets to stress test the RTL.
-*   **`uvm/` Directory**: Contains the complete **SystemVerilog UVM environment** (driver, monitor, sequencer, agent, scoreboard, sequences, and coverage covergroups) capable of exhaustive testing. Run this with a commercial simulator (VCS, Questa, Xcelium).
+*   **`uvm/` Directory**: Contains the complete **SystemVerilog UVM environment** (driver, monitor, sequencer, agent, scoreboard, sequences, and coverage covergroups). It runs on two open-source simulators, xezim and Verilator (flows 4 and 5 below), and should also run unchanged on commercial simulators (VCS, Questa, Xcelium). See [uvm/README.md](uvm/README.md).
 
 ## Running Tests
 You can view the available targets and options by running:
@@ -35,6 +35,18 @@ make help
 - **Description:** Uses Verilator to compile the specified testbench into C++ for extremely fast simulation. Defaults to `TB=tb_uvm_sv` if not specified.
 - **Dependencies:** Verilator (`verilator`).
 
+### 4. Xezim UVM Flow
+- **Command:** `make xezim_uvm`
+- **Description:** Runs the standard UVM testbench in `uvm/` on the xezim simulator.
+- **Dependencies:** xezim (built from source with Rust/cargo), `git`.
+
+### 5. Verilator UVM Flow
+- **Command:** `make verilator_uvm [UVM_TESTNAME=<test>] [SEED=<n>] [COV=0]`
+- **Description:** Runs the same UVM testbench on Verilator with the unmodified Accellera UVM library, and produces code coverage (`tests/uvm/logs/annotated_src/`, `tests/uvm/logs/coverage.info`). `make verilator_uvm_all` runs every test in `ALL_TESTNAMES`. The first build takes about 2 minutes.
+- **Dependencies:** Verilator **v5.052** or newer (the Ubuntu apt package is too old; build from source or use the `verilator/verilator:v5.052` container), `z3`, `git`.
+
+Both UVM flows fail the `make` target if the UVM report summary counts any `UVM_ERROR` or `UVM_FATAL`. Setup and options are covered in [uvm/README.md](uvm/README.md).
+
 ## Waveforms & Logs
 
 All flows support waveform generation by appending `WAVE=1` to the make command. The output format is standard `.vcd`, and the output files will be named predictively (e.g., `waves_icarus_tb_smoke.vcd`).
@@ -46,7 +58,7 @@ make icarus TB=tb_smoke WAVE=1
 make verilator GUI=1
 ```
 
-Simulation execution logs will automatically be saved inside `tests/logs/`.
+Simulation execution logs will automatically be saved inside `tests/logs/` (UVM flows: `tests/uvm/logs/`). For `verilator_uvm`, `WAVE=1` writes `waves_verilator_uvm.vcd`. The xezim flow does not generate waveforms.
 
 ---
 

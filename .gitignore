@@ -28,3 +28,5 @@ synth/synth.log
 synth/synth_netlist.v
 xezim_cov.json
 uvm-src/
+tests/uvm/uvm-core/
+tests/uvm/logs/

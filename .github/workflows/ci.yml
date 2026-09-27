@@ -59,3 +59,27 @@ jobs:
       run: |
         export PATH="$GITHUB_WORKSPACE/../xezim/target/release:$PATH"
         make xezim_uvm
+
+  verilator-uvm:
+    runs-on: ubuntu-latest
+    # Stock UVM needs a newer Verilator than Ubuntu's apt package (5.020).
+    container: verilator/verilator:v5.052
+
+    steps:
+    - name: Install git, make and z3
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends ca-certificates git make z3
+
+    - uses: actions/checkout@v4
+
+    - name: Run Standard UVM Testbench (Verilator)
+      run: |
+        make -C tests/uvm verilator
+
+    - name: Upload UVM logs and coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: verilator-uvm-logs
+        path: tests/uvm/logs/
