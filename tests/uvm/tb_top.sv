@@ -77,8 +77,10 @@ class packet_driver extends uvm_driver #(packet_item);
         @(posedge vif.clk);
         while(!vif.o_ready) @(posedge vif.clk);
 
-        header_w1 = {item.streamId[15:8], item.streamId[7:0], item.msgLength[15:8], item.msgLength[7:0]};
-        header_w2 = {item.seqNumber[31:24], item.seqNumber[23:16], item.seqNumber[15:8], item.seqNumber[7:0]};
+        // Wire format (matches packet_handler.v and tb_cocotb.py): bytes are sent
+        // MSB-first on i_data, each header field is little-endian.
+        header_w1 = {item.msgLength[7:0], item.msgLength[15:8], item.streamId[7:0], item.streamId[15:8]};
+        header_w2 = {item.seqNumber[7:0], item.seqNumber[15:8], item.seqNumber[23:16], item.seqNumber[31:24]};
 
         vif.valid <= 1;
         vif.data <= header_w1;
@@ -143,8 +145,8 @@ class packet_monitor extends uvm_monitor;
                 packet_item pkt = packet_item::type_id::create("pkt");
                 logic [31:0] w1, w2;
                 w1 = vif.data;
-                pkt.msgLength = {w1[7:0], w1[15:8]};
-                pkt.streamId  = {w1[23:16], w1[31:24]};
+                pkt.msgLength = {w1[23:16], w1[31:24]};
+                pkt.streamId  = {w1[7:0], w1[15:8]};
                 @(posedge vif.clk);
                 w2 = vif.data;
                 pkt.seqNumber = {w2[7:0], w2[15:8], w2[23:16], w2[31:24]};
