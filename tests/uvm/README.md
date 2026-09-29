@@ -11,16 +11,16 @@ Historically, open-source simulators struggled to compile and run the full IEEE 
 
 Running both is deliberate: the same UVM code on two independent simulators catches testbench bugs and simulator bugs that a single tool can hide.
 
-Both flows **fail** unless the UVM report summary is printed with `UVM_ERROR : 0` and `UVM_FATAL : 0`. Simulation logs are written to `tests/uvm/logs/`.
+Both flows **fail** unless the UVM report summary is printed with no non-zero `UVM_ERROR` / `UVM_FATAL` count (but see the xezim caveat under Known limitations). Simulation logs are written to `tests/uvm/logs/`.
 
 ## Implementation Overview
 
 The environment is built using standard UVM components:
 - **`packet_item`**: The transaction class that holds randomized packet fields (msgLength, streamId, seqNumber, payload).
-- **`packet_sequence`**: Generates randomized items and sequences of items.
+- **`packet_seq`**: The sequence: 5 in-order packets on stream 15, one with a skipped seqNumber (7 instead of 6), then 10 randomized packets.
 - **`packet_driver`**: Drives the UVM items onto the physical pins via a virtual interface.
-- **`packet_monitor`**: Observes the physical pins and reconstructs the packet transactions, sending them to the scoreboard via an analysis port.
-- **`packet_scoreboard`**: Compares the received packets against expected formats and sequence numbers.
+- **`packet_monitor`**: Observes the *input* pins (`i_data`/`i_valid`/`o_ready`/`i_last`), reconstructs the header of each packet, samples the `packet_cg` covergroup and sends the transaction to the scoreboard via an analysis port.
+- **`packet_scoreboard`**: Checks each monitored header is well formed (streamId in 1..32, seqNumber > 0). It does not look at the DUT outputs (see Known limitations).
 - **`packet_agent` / `packet_env`**: Standard UVM hierarchical containers.
 - **`packet_test`**: The top-level test that configures the environment and starts sequences on the sequencer.
 
@@ -137,6 +137,8 @@ Targets available from `tests/uvm` (run `make help` there):
 ### Known limitations
 - Coverage covers code only (line, toggle, branch, expression). The monitor's covergroup compiles, but the flow does not report functional coverage yet.
 - The scoreboard only checks input-side header fields. `o_data` and `o_packetLost` are not compared against a reference model yet (see roadmap below).
+- **xezim pass/fail check**: the log check looks for the `UVM_ERROR : <n>` / `UVM_FATAL : <n>` lines of the UVM report summary. In the last CI run of this flow (xezim built from its default branch at the time), xezim's summary did not list `UVM_INFO` / `UVM_ERROR` / `UVM_FATAL` counts at all, although 16 `UVM_ERROR` messages had been printed. If that is still the case, the xezim target cannot detect scoreboard errors. The same log also showed a `[DRVCONNECT]` warning (driver not connected to a sequencer) even though items were driven, and identical "random" field values across packets.
+- CI builds xezim and xezim-core from their default branches (not pinned), so the xezim results can change without any change in this repository.
 
 ## Roadmap
 - [x] Verilator + stock Accellera UVM flow (`make verilator_uvm`), CI job, pass/fail gate on UVM errors for both flows
