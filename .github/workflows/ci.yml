@@ -62,20 +62,18 @@ jobs:
 
   verilator-uvm:
     runs-on: ubuntu-latest
-    # Stock UVM needs a newer Verilator than Ubuntu's apt package (5.020).
-    container: verilator/verilator:v5.052
 
     steps:
-    - name: Install git, make and z3
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends ca-certificates git make z3
-
     - uses: actions/checkout@v4
 
-    - name: Run Standard UVM Testbench (Verilator)
+    # Stock UVM needs a newer Verilator than Ubuntu's apt package, so run the
+    # flow inside the official image. Using `docker run` in a step (instead of a
+    # job-level `container:`) keeps the runner request identical to the `test` job.
+    - name: Run Standard UVM Testbench (Verilator v5.052 container)
       run: |
-        make -C tests/uvm verilator
+        docker run --rm --entrypoint bash -v "$PWD":/work -w /work \
+          verilator/verilator:v5.052 -c \
+          "apt-get update && apt-get install -y --no-install-recommends ca-certificates git make z3 && make -C tests/uvm verilator"
 
     - name: Upload UVM logs and coverage
       if: always()
