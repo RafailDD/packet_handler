@@ -35,8 +35,10 @@ class packet_driver extends uvm_driver #(packet_item);
         @(posedge vif.clk);
         while(!vif.o_ready) @(posedge vif.clk);
 
-        header_w1 = {item.streamId[15:8], item.streamId[7:0], item.msgLength[15:8], item.msgLength[7:0]};
-        header_w2 = {item.seqNumber[31:24], item.seqNumber[23:16], item.seqNumber[15:8], item.seqNumber[7:0]};
+        // Wire format (matches packet_handler.v and tb_cocotb.py): bytes are sent
+        // MSB-first on i_data, each header field is little-endian.
+        header_w1 = {item.msgLength[7:0], item.msgLength[15:8], item.streamId[7:0], item.streamId[15:8]};
+        header_w2 = {item.seqNumber[7:0], item.seqNumber[15:8], item.seqNumber[23:16], item.seqNumber[31:24]};
 
         vif.valid <= 1;
         vif.data <= header_w1;

@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main", "jules-experimenting" ]
+    branches: [ "main", "jules-experimenting", "claude-main" ]
   pull_request:
-    branches: [ "main", "jules-experimenting" ]
+    branches: [ "main", "jules-experimenting", "claude-main" ]
 
 jobs:
   test:
@@ -59,3 +59,25 @@ jobs:
       run: |
         export PATH="$GITHUB_WORKSPACE/../xezim/target/release:$PATH"
         make xezim_uvm
+
+  verilator-uvm:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Stock UVM needs a newer Verilator than Ubuntu's apt package, so run the
+    # flow inside the official image. Using `docker run` in a step (instead of a
+    # job-level `container:`) keeps the runner request identical to the `test` job.
+    - name: Run Standard UVM Testbench (Verilator v5.052 container)
+      run: |
+        docker run --rm --entrypoint bash -v "$PWD":/work -w /work \
+          verilator/verilator:v5.052 -c \
+          "apt-get update && apt-get install -y --no-install-recommends ca-certificates git make z3 && make -C tests/uvm verilator"
+
+    - name: Upload UVM logs and coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: verilator-uvm-logs
+        path: tests/uvm/logs/

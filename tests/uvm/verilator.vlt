@@ -1,0 +1,33 @@
+`verilator_config
+// Control file for the Verilator UVM flow (make -C tests/uvm verilator).
+// Note: a comment starting with "// verilator" is parsed as a metacomment.
+// Approach adapted from MikeCovrado/GettingVerilatorStartedWithUVM (sim/config.vlt),
+// but waivers are scoped per file instead of disabled globally.
+
+// UVM base class library: not our code, silence lint and exclude it from
+// code coverage so the numbers reflect the DUT and testbench only.
+// Patterns cover the default clone, the xezim clone, and Accellera tarballs
+// (UVM_HOME=/path/to/1800.2-2020.3.2/src).
+lint_off -file "*uvm-core/src/*"
+lint_off -file "*uvm-src/src/*"
+lint_off -file "*1800.2-*/src/*"
+coverage_off -file "*uvm-core/src/*"
+coverage_off -file "*uvm-src/src/*"
+coverage_off -file "*1800.2-*/src/*"
+
+// Testbench: the UVM field macros expand into width-mismatched calls, and
+// signals accessed through the virtual interface / covergroup internals look
+// undriven or unused to Verilator. Every other -Wall rule stays on.
+lint_off -rule WIDTHEXPAND  -file "*tb_top.sv"
+lint_off -rule WIDTHTRUNC   -file "*tb_top.sv"
+lint_off -rule DECLFILENAME -file "*tb_top.sv"
+lint_off -rule IMPORTSTAR   -file "*tb_top.sv"
+lint_off -rule UNDRIVEN     -file "*tb_top.sv"
+lint_off -rule UNUSEDSIGNAL -file "*tb_top.sv"
+
+// Waveforms: trace only the DUT, not the UVM class hierarchy.
+tracing_off -scope "*"
+tracing_on  -scope "tb_top.dut*"
+
+// std package shipped with the Verilator runtime.
+coverage_off -file "*verilated_std.sv"

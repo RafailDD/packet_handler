@@ -1,5 +1,5 @@
 # Unified Makefile for Packet Handler Testbenches
-# Supports cocotb, icarus, and verilator-uvm flows.
+# Supports cocotb, icarus, verilator, and UVM (xezim / Verilator) flows.
 
 # Default Target
 .PHONY: help
@@ -17,6 +17,9 @@ help:
 	@echo "  make verilator       : Run Verilator pure SV UVM test flow."
 	@echo "                         Defaults to TB=tb_uvm_sv."
 	@echo "  make xezim_uvm       : Run full UVM testbench via xezim."
+	@echo "  make verilator_uvm   : Run full UVM testbench via Verilator (v5.052+)"
+	@echo "                         with the Accellera UVM library + code coverage."
+	@echo "  make verilator_uvm_all : Same, running every test in ALL_TESTNAMES."
 	@echo "  make synth           : Run Yosys synthesis flow using Sky130 HD library."
 	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
 	@echo "  make benchmark       : Run performance benchmark test for python logic."
@@ -29,6 +32,10 @@ help:
 	@echo "                         Applicable to all targets."
 	@echo "  TB=<testbench>       : Specify testbench file for icarus and verilator."
 	@echo "                         e.g., TB=tb_smoke"
+	@echo "  UVM_TESTNAME=<test>  : UVM test for verilator_uvm."
+	@echo "                         Defaults to packet_test."
+	@echo "  COV=0                : Disable code coverage for verilator_uvm."
+	@echo "  SEED=<n>             : Randomization seed for verilator_uvm (default 1)."
 	@echo "======================================================================"
 
 # ==========================================
@@ -80,7 +87,15 @@ cocotb: run_cocotb
 run_cocotb:
 	$(MAKE) sim
 
-include $(shell cocotb-config --makefiles)/Makefile.sim
+# Only pull in cocotb's rules when cocotb is installed, so the other flows
+# (e.g. in a Verilator-only container) still work without it.
+COCOTB_MAKEFILES := $(shell cocotb-config --makefiles 2>/dev/null)
+ifneq ($(COCOTB_MAKEFILES),)
+include $(COCOTB_MAKEFILES)/Makefile.sim
+else
+sim:
+	$(error cocotb not found: install it with 'pip install cocotb')
+endif
 
 # ==========================================
 # Icarus Flow
@@ -129,6 +144,19 @@ xezim_uvm:
 	$(MAKE) -C tests/uvm sim
 
 # ==========================================
+# Verilator UVM Flow
+# ==========================================
+.PHONY: verilator_uvm verilator_uvm_all
+
+verilator_uvm:
+	@echo "Running UVM tests via Verilator..."
+	$(MAKE) -C tests/uvm verilator
+
+verilator_uvm_all:
+	@echo "Running all UVM tests via Verilator..."
+	$(MAKE) -C tests/uvm verilator_all
+
+# ==========================================
 # Synthesis Flow (Yosys)
 # ==========================================
 .PHONY: fetch_lib synth synth_parse
@@ -163,4 +191,5 @@ benchmark:
 # ==========================================
 .PHONY: clean
 clean::
+	$(MAKE) -C tests/uvm clean
 	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v
