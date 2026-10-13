@@ -55,6 +55,8 @@ A design that expects the output to hold its value (OpenRAM does not guarantee t
 
 ## Results
 
+### Synthesis only
+
 From `make synth`, Yosys 0.33 + OpenSTA at a 10 ns target, Sky130 HD typical corner, no wire parasitics:
 
 | | Flip-flop FIFO | SRAM macro FIFO |
@@ -65,7 +67,7 @@ From `make synth`, Yosys 0.33 + OpenSTA at a 10 ns target, Sky130 HD typical cor
 | Area | 0.509 mm² | **0.384 mm²** (0.285 mm² is the macro) |
 | Min period | 8.25 ns | 8.25 ns |
 
-The SRAM build synthesizes about 2.6x faster, with 4.4x fewer cells and 25% less area. **Fmax doesn't change** because the critical path isn't in the FIFO. It runs through the sequence-number tracker:
+After synthesis, the SRAM build is about 2.6x faster to synthesize, with 4.4x fewer cells and 25% less area. **Fmax doesn't change** because the critical path isn't in the FIFO. It runs through the sequence-number tracker:
 
 ```
 in_streamId -> packetTracker[idx] read mux -> +1 (ripple carry) -> != seqNumber -> in_packetLost
@@ -75,6 +77,29 @@ Storing the *expected* next sequence number (`seqNumber + 1`) in `packetTracker`
 
 > [!CAUTION]
 > The OpenRAM Liberty files are analytical estimates: 0.38 ns clock-to-out and a 1.96 ns minimum period at TT. Silicon measurements of the Sky130 OpenRAM macros are considerably slower, so treat timing through the macro as optimistic until it's checked against silicon data. The read path also launches on the **falling** edge, so the macro output to the prefetch register is a half-cycle path.
+
+### Post-route (SiliconCompiler `asicflow`, OpenROAD, CI run 38466551924)
+
+`make sc ARGS="asic"` vs `make sc ARGS="asic --sram"`, Sky130 HD, 10 ns clock, after detailed routing:
+
+| | Flip-flop FIFO | SRAM macro FIFO |
+| --- | --- | --- |
+| RTL-to-GDS runtime (GitHub runner) | 80 min | **11 min** |
+| Cells (incl. fill / tap) | 117,700 | 80,045 |
+| Std-cell area | 0.443 mm² | **0.092 mm²** + 0.285 mm² macro |
+| Die area | 0.961 mm² | 0.901 mm² |
+| Wirelength | 1,291 mm | **238 mm** |
+| Peak power (estimate) | 104.9 mW | **22.5 mW** |
+| Routing DRCs | 0 | 0 |
+| Setup slack: typical (tt 1.80 V 25 °C) | +4.71 ns (~189 MHz) | +4.05 ns (~168 MHz) |
+| Setup slack: fast | +6.24 ns | +4.29 ns |
+| Setup slack: slow (ss 1.40 V -40 °C) | -10.41 ns (~49 MHz) | -8.89 ns (~53 MHz) |
+| Hold slack: slow | -0.02 ns | -2.40 ns |
+| Slew / capacitance violations (DRVs) | 2,220 | 155 |
+
+Both builds close timing at the typical and fast corners, and neither closes at the slow corner. The critical path is the same in both: `in_streamId → packetTracker → +1 → o_packetLost`.
+
+The SRAM build's slow-corner hold violations are all at the block boundary: `i_data` input ports to the macro's `din0` and to `packetTracker`. After CTS, the propagated clock arrives several ns late at that corner, while the SDC's input delay is referenced to the ideal clock edge. In a chip, the top-level constraints (I/O timing, or a `set_clock_latency -source` budget) decide whether these are real. The SiliconCompiler job reports timing as metrics and does not fail on it.
 
 ## How to use it
 

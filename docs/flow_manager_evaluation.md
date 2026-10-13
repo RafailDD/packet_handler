@@ -35,7 +35,7 @@ The Makefile flows stay as the quick local path, and CI runs both. Keeping both 
 
 - **SiliconCompiler:**
   - Lint, Icarus and Verilator simulation, cocotb on both simulators, UVM on Verilator, and the `SRAM=1` variants all passed in the `sc_runner` container.
-  - Synthesis + STA and RTL-to-GDS fetch LambdaPDK data from `codeload.github.com`, which this development session's egress policy blocks, so they were validated in CI instead.
+  - Synthesis + STA and RTL-to-GDS fetch LambdaPDK data from `codeload.github.com`, which this development session's egress policy blocks, so they were validated in CI instead. All CI jobs passed, including RTL-to-GDS with 0 routing DRCs for both FIFO builds (results in [FIFO memory options](memory_options.md)).
 - **Edalize:** `get_edatool("icarus")` ran `tb_basic_sv` unchanged (PASSED). Its Yosys backend only targets FPGA architectures, and its OpenROAD backend expects a separate OpenROAD-flow-scripts checkout. There's no STA step and no cocotb runner.
 - **Bender:** `Bender.yml` with `simulation` / `sky130_sram` targets produced correct `flist` and Verilator scripts. It is a file-list and dependency tool only: Make would still run every tool, which is what the repo already does. It's worth adding only if the project starts pulling in IP packages.
 - **LogikBench:** `lb syn --target sky130 --tool tardigrade` runs only LogikBench's own benchmark groups (`basic`, `memory`, `epfl`, ...). It can't take an external design, so it can't drive this project. Its Tardigrade wrapper was the template for `flow/tools/tardigrade.py`.

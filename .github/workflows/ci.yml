@@ -169,7 +169,11 @@ jobs:
           build/**/reports/**
           build/**/*.pkg.json
 
+  # RTL-to-GDS takes ~80 min with the FIFO in flip-flops (~11 min with the
+  # SRAM macro), so it runs on manual dispatch and on pushes to the main
+  # branches only.
   asic:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'claude-main'))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
