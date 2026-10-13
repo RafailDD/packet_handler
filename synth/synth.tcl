@@ -14,6 +14,14 @@ if {[info exists ::env(SYNTH_DEFINES)]} {
     foreach d $::env(SYNTH_DEFINES) { lappend defines "-D$d" }
 }
 
+# Hard macros (e.g. SYNTH_EXTRA_LIBS="../macros/sky130_sram/<macro>.lib") are
+# read as black boxes; their area and timing come from the Liberty file.
+set extra_libs {}
+if {[info exists ::env(SYNTH_EXTRA_LIBS)]} {
+    set extra_libs $::env(SYNTH_EXTRA_LIBS)
+}
+foreach l $extra_libs { read_liberty -lib $l }
+
 # Read Verilog source
 read_verilog -sv {*}$defines ../packet_handler.v
 
@@ -46,8 +54,10 @@ insbuf -buf sky130_fd_sc_hd__buf_2 A X
 # Clean up
 clean
 
-# Print statistics
-stat -liberty $lib
+# Print statistics (macro area included)
+set stat_libs [list -liberty $lib]
+foreach l $extra_libs { lappend stat_libs -liberty $l }
+stat {*}$stat_libs
 
 # Write structural netlist
 write_verilog -noattr synth_netlist.v

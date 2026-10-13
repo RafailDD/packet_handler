@@ -38,6 +38,8 @@ help:
 	@echo "  COV=0                : Disable code coverage for verilator_uvm."
 	@echo "  SEED=<n>             : Randomization seed for verilator_uvm (default 1)."
 	@echo "  CLK_PERIOD_NS=<ns>   : Target clock period for synth / sta (default 10)."
+	@echo "  SRAM=1               : Use the Sky130 SRAM macro for the FIFO (cocotb, icarus,"
+	@echo "                         verilator, synth, sta). Default: behavioral model."
 	@echo "======================================================================"
 
 # ==========================================
@@ -46,6 +48,41 @@ help:
 ifeq ($(GUI),1)
     WAVE=1
 endif
+
+# ==========================================
+# FIFO memory implementation (SRAM=1)
+# ==========================================
+# SRAM=1 defines PH_SKY130_SRAM, so ph_fifo_mem instantiates the Sky130
+# OpenRAM macro instead of its behavioral model. Simulation then needs the
+# macro's Verilog model and synthesis / STA its Liberty file, both fetched
+# into macros/sky130_sram/ by `make fetch_sram`.
+SRAM ?= 0
+SRAM_MACRO = sky130_sram_2kbyte_1rw1r_32x512_8
+SRAM_DIR   = macros/sky130_sram
+SRAM_URL   = https://raw.githubusercontent.com/siliconcompiler/lambdapdk/v0.2.22/lambdapdk/sky130/libs/sky130sram/$(SRAM_MACRO)
+SRAM_LIB   = $(SRAM_DIR)/$(SRAM_MACRO)_TT_1p8V_25C.lib
+
+ifeq ($(SRAM),1)
+    SRAM_DEP      = fetch_sram
+    SIM_RTL       = packet_handler.v macros/sky130_sram_model.v
+    IVERILOG_SRAM = -D PH_SKY130_SRAM -I macros
+    VERILATOR_SRAM = +define+PH_SKY130_SRAM -Imacros
+else
+    SRAM_DEP      =
+    SIM_RTL       = packet_handler.v
+    IVERILOG_SRAM =
+    VERILATOR_SRAM =
+endif
+
+.PHONY: fetch_sram
+fetch_sram:
+	@mkdir -p $(SRAM_DIR)
+	@for f in nldm/$(SRAM_MACRO)_TT_1p8V_25C.lib verilog/$(SRAM_MACRO).v lef/$(SRAM_MACRO).lef; do \
+		if [ ! -f $(SRAM_DIR)/$$(basename $$f) ]; then \
+			echo "Fetching $$(basename $$f)..."; \
+			wget -q -O $(SRAM_DIR)/$$(basename $$f) $(SRAM_URL)/$$f || exit 1; \
+		fi; \
+	done
 
 # ==========================================
 # Parse and Sanitize Inputs
@@ -67,7 +104,7 @@ endif
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 PWD=$(shell pwd)
-VERILOG_SOURCES = $(PWD)/packet_handler.v
+VERILOG_SOURCES = $(addprefix $(PWD)/,$(SIM_RTL))
 TOPLEVEL = packet_handler
 # Set python path so cocotb can find the module in tests/
 export PYTHONPATH := $(PWD)/tests:$(PYTHONPATH)
@@ -81,8 +118,11 @@ ifeq ($(WAVE),1)
     export WAVE_FMT=vcd
     COMPILE_ARGS += -D WAVE=1
 endif
+ifeq ($(SRAM),1)
+    COMPILE_ARGS += -D PH_SKY130_SRAM -I $(PWD)/macros
+endif
 
-cocotb: run_cocotb
+cocotb: $(SRAM_DEP) run_cocotb
 	@if [ "$(WAVE)" = "1" ]; then cp sim_build/*.vcd waves_cocotb.vcd || true; fi
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_cocotb.vcd & fi
 
@@ -106,13 +146,13 @@ endif
 
 # Default TB for Icarus
 icarus: TB_CLEAN ?= tb_basic_sv
-icarus:
+icarus: $(SRAM_DEP)
 	@echo "Running Icarus Verilog with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
-	iverilog -g2012 -I tests -D WAVE=1 -D WAVE_FILE=\"waves_icarus_$(TB_CLEAN).vcd\" -o sim_icarus_$(TB_CLEAN).out packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
+	iverilog -g2012 -I tests $(IVERILOG_SRAM) -D WAVE=1 -D WAVE_FILE=\"waves_icarus_$(TB_CLEAN).vcd\" -o sim_icarus_$(TB_CLEAN).out $(SIM_RTL) $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
 else
-	iverilog -g2012 -I tests -o sim_icarus_$(TB_CLEAN).out packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
+	iverilog -g2012 -I tests $(IVERILOG_SRAM) -o sim_icarus_$(TB_CLEAN).out $(SIM_RTL) $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_icarus_$(TB_CLEAN).log
 endif
 	vvp sim_icarus_$(TB_CLEAN).out 2>&1 | tee -a tests/logs/sim_icarus_$(TB_CLEAN).log
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_icarus_$(TB_CLEAN).vcd & fi
@@ -125,13 +165,13 @@ endif
 
 # Default TB for Verilator
 verilator: TB_CLEAN ?= tb_uvm_sv
-verilator:
+verilator: $(SRAM_DEP)
 	@echo "Running Verilator with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
-	verilator --binary -Itests -j 0 -Wall --trace +define+WAVE=1 +define+WAVE_FILE=\"waves_verilator_$(TB_CLEAN).vcd\" packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
+	verilator --binary -Itests $(VERILATOR_SRAM) -j 0 -Wall --trace +define+WAVE=1 +define+WAVE_FILE=\"waves_verilator_$(TB_CLEAN).vcd\" $(SIM_RTL) $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
 else
-	verilator --binary -Itests -j 0 -Wall packet_handler.v $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
+	verilator --binary -Itests $(VERILATOR_SRAM) -j 0 -Wall $(SIM_RTL) $(wildcard tests/$(TB_CLEAN).v) $(wildcard tests/$(TB_CLEAN).sv) 2>&1 | tee tests/logs/sim_verilator_$(TB_CLEAN).log
 endif
 	./obj_dir/Vpacket_handler 2>&1 | tee -a tests/logs/sim_verilator_$(TB_CLEAN).log
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_verilator_$(TB_CLEAN).vcd & fi
@@ -177,7 +217,7 @@ STA_BIN := $(shell command -v sta 2>/dev/null)
 ifneq ($(STA_BIN),)
     STA_CMD = sta
 else
-    STA_CMD = docker run --rm -e CLK_PERIOD_NS -v "$(PWD)/synth":/work -w /work $(EDA_IMAGE) sta
+    STA_CMD = docker run --rm -e CLK_PERIOD_NS -e EXTRA_LIBS -v "$(PWD)":/work -w /work/synth $(EDA_IMAGE) sta
 endif
 
 fetch_lib:
@@ -189,8 +229,14 @@ fetch_lib:
 		echo "Sky130 standard cell library already present."; \
 	fi
 
-synth: fetch_lib
-	@echo "Running Yosys Synthesis Flow (CLK_PERIOD_NS=$(CLK_PERIOD_NS))..."
+ifeq ($(SRAM),1)
+    export SYNTH_DEFINES    = PH_SKY130_SRAM
+    export SYNTH_EXTRA_LIBS = ../$(SRAM_LIB)
+    export EXTRA_LIBS       = ../$(SRAM_LIB)
+endif
+
+synth: fetch_lib $(SRAM_DEP)
+	@echo "Running Yosys Synthesis Flow (CLK_PERIOD_NS=$(CLK_PERIOD_NS) SRAM=$(SRAM))..."
 	@cd synth && yosys -c synth.tcl -l synth.log > /dev/null
 	$(MAKE) --no-print-directory sta
 

@@ -3,6 +3,9 @@ set lib    [expr {[info exists ::env(LIB_FILE)] ? $::env(LIB_FILE) : "lib/sky130
 set netlst [expr {[info exists ::env(NETLIST)]  ? $::env(NETLIST)  : "synth_netlist.v"}]
 
 read_liberty $lib
+if {[info exists ::env(EXTRA_LIBS)]} {
+    foreach l $::env(EXTRA_LIBS) { read_liberty $l }
+}
 read_verilog $netlst
 link_design packet_handler
 read_sdc packet_handler.sdc
