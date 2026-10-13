@@ -20,7 +20,8 @@ help:
 	@echo "  make verilator_uvm   : Run full UVM testbench via Verilator (v5.052+)"
 	@echo "                         with the Accellera UVM library + code coverage."
 	@echo "  make verilator_uvm_all : Same, running every test in ALL_TESTNAMES."
-	@echo "  make synth           : Run Yosys synthesis flow using Sky130 HD library."
+	@echo "  make synth           : Run Yosys synthesis (Sky130 HD) followed by OpenSTA."
+	@echo "  make sta             : Run OpenSTA on the existing synth/synth_netlist.v."
 	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
 	@echo "  make benchmark       : Run performance benchmark test for python logic."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
@@ -36,6 +37,7 @@ help:
 	@echo "                         Defaults to packet_test."
 	@echo "  COV=0                : Disable code coverage for verilator_uvm."
 	@echo "  SEED=<n>             : Randomization seed for verilator_uvm (default 1)."
+	@echo "  CLK_PERIOD_NS=<ns>   : Target clock period for synth / sta (default 10)."
 	@echo "======================================================================"
 
 # ==========================================
@@ -157,12 +159,26 @@ verilator_uvm_all:
 	$(MAKE) -C tests/uvm verilator_all
 
 # ==========================================
-# Synthesis Flow (Yosys)
+# Synthesis Flow (Yosys + OpenSTA)
 # ==========================================
-.PHONY: fetch_lib synth synth_parse
+.PHONY: fetch_lib synth sta synth_parse
 
 LIB_FILE=synth/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 LIB_URL=https://raw.githubusercontent.com/efabless/skywater-pdk-libs-sky130_fd_sc_hd/master/timing/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Target clock period in ns, used by ABC (synth/synth.tcl) and by the SDC.
+CLK_PERIOD_NS ?= 10
+export CLK_PERIOD_NS
+
+# Container with OpenSTA, OpenROAD, Yosys, Icarus and Verilator. Used by
+# `make sta` when `sta` is not on PATH, and by the SiliconCompiler flows.
+EDA_IMAGE ?= ghcr.io/siliconcompiler/sc_runner:latest
+STA_BIN := $(shell command -v sta 2>/dev/null)
+ifneq ($(STA_BIN),)
+    STA_CMD = sta
+else
+    STA_CMD = docker run --rm -e CLK_PERIOD_NS -v "$(PWD)/synth":/work -w /work $(EDA_IMAGE) sta
+endif
 
 fetch_lib:
 	@mkdir -p synth/lib
@@ -174,12 +190,20 @@ fetch_lib:
 	fi
 
 synth: fetch_lib
-	@echo "Running Yosys Synthesis Flow..."
-	@cd synth && yosys -c synth.tcl -l synth.log
+	@echo "Running Yosys Synthesis Flow (CLK_PERIOD_NS=$(CLK_PERIOD_NS))..."
+	@cd synth && yosys -c synth.tcl -l synth.log > /dev/null
+	$(MAKE) --no-print-directory sta
+
+sta:
+	@test -f synth/synth_netlist.v || { echo "synth/synth_netlist.v not found: run 'make synth' first"; exit 1; }
+	@echo "Running OpenSTA (CLK_PERIOD_NS=$(CLK_PERIOD_NS))..."
+	@cd synth && $(STA_CMD) -no_splash -exit sta.tcl > sta.rpt 2>&1; rc=$$?; \
+		grep -E "^(wns|tns|worst slack)|period_min" sta.rpt; exit $$rc
 
 synth_parse:
 	@echo "Parsing Synthesis Log..."
-	@python3 synth/scripts/synth_parse.py synth/synth.log
+	@python3 synth/scripts/synth_parse.py synth/synth.log synth/sta.rpt
+# ==========================================
 # Benchmark Flow
 # ==========================================
 .PHONY: benchmark
@@ -192,4 +216,4 @@ benchmark:
 .PHONY: clean
 clean::
 	$(MAKE) -C tests/uvm clean
-	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v
+	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v synth/sta.rpt synth/abc.constr
