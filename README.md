@@ -148,7 +148,7 @@ Tools used for the project:
 - [ ] Create an installation script for OSS Cad Suite, cocotb, and xezim
 - [ ] Verify design, post code and functional coverage (code coverage available via `make verilator_uvm`)
 - [ ] Explore FPGA options to target specific technologies
-- [ ] Look into synthesis options, explore libraries for maximum clock frequency
+- [ ] Look into synthesis options, explore libraries for maximum clock frequency (see the [Tardigrade evaluation](docs/tardigrade_evaluation.md))
 
 # Project Structure
 
