@@ -41,10 +41,10 @@ Zero ASIC published the benchmark numbers itself, and nobody has reproduced them
 
 ## Suggested path
 
-These steps are useful with or without Tardigrade, and they lower its integration cost to almost nothing:
+These steps are useful with or without Tardigrade, and they lower its integration cost to almost nothing. Status as of the follow-up work:
 
-1. **Add an SDC** (`synth/packet_handler.sdc`) with a clock on `i_clk`, plus input and output delays.
-2. **Add timing to `make synth`.** Run OpenSTA on the Yosys netlist and report WNS and Fmax. Also hand the clock period to ABC (`abc -D <ps>`) so mapping is timing-aware.
-3. **Optionally move the synthesis flow to SiliconCompiler or LogikBench** (`lb syn --target skywater130 --tool yosys`). After that, trying Tardigrade is just `--tool tardigrade`, and the QoR JSON gives a like-for-like comparison.
-4. **Look at the architecture.** FIFO depth, an SRAM macro (e.g. OpenRAM / `sky130_sram`), and the read mux / 296-bit output path probably matter more for area and Fmax than the choice of synthesis engine.
-5. **Revisit Tardigrade** if Zero ASIC grants access, or if it becomes available through SiliconCompiler. Its Fmax would then be compared against the Yosys baseline from step 2 on the same SDC and corner.
+1. **Add an SDC.** Done: `synth/packet_handler.sdc`.
+2. **Add timing to `make synth`.** Done: timing-driven `abc -D`, then OpenSTA (`make sta`, WNS / TNS / Fmax in `make synth_parse`).
+3. **Move synthesis to SiliconCompiler.** Done: `flow/sc_flow.py` runs every flow. `make sc ARGS="syn --syn-tool tardigrade"` already selects a Tardigrade task modeled on LogikBench's wrapper, with the same SDC and OpenSTA step as the Yosys run. It stops with "executable not found" until a binary is available. See the [flow manager evaluation](flow_manager_evaluation.md).
+4. **Look at the architecture.** Done for the FIFO: [FIFO memory options](memory_options.md). The critical path is now the sequence-number check, not the FIFO.
+5. **Revisit Tardigrade** if Zero ASIC grants access. Then compare `syn --syn-tool tardigrade` against `syn` on the same SDC and corners.
