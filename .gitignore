@@ -33,3 +33,4 @@ tests/uvm/logs/
 synth/abc.constr
 synth/sta.rpt
 macros/sky130_sram/
+build/

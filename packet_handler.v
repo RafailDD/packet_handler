@@ -351,7 +351,7 @@ endmodule
 //                   (port 0 writes, port 1 reads, address MSB tied low) for
 //                   bits [31:0]; the remaining WIDTH-32 bits stay in flops.
 //                   Synthesis needs the macro Liberty file (black box);
-//                   simulation needs the macro's Verilog model.
+//                   simulation needs macros/sky130_sram_model.v.
 //-----------------------------------------------------------------------------
 /* verilator lint_off DECLFILENAME */
 module ph_fifo_mem #(
@@ -389,12 +389,6 @@ module ph_fifo_mem #(
         .dout1  (o_rdata[31:0])
     );
     /* verilator lint_on PINCONNECTEMPTY */
-`ifndef SYNTHESIS
-    // Silence the per-access $display of the OpenRAM simulation model.
-    /* verilator lint_off DEFPARAM */
-    defparam u_sram.VERBOSE = 0;
-    /* verilator lint_on DEFPARAM */
-`endif
 
     reg [XW-1:0] xmem [0:(1<<AW)-1];
     reg [XW-1:0] xrdata;

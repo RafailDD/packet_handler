@@ -23,6 +23,8 @@ help:
 	@echo "  make synth           : Run Yosys synthesis (Sky130 HD) followed by OpenSTA."
 	@echo "  make sta             : Run OpenSTA on the existing synth/synth_netlist.v."
 	@echo "  make synth_parse     : Parse and summarize Yosys synthesis log."
+	@echo "  make sc ARGS=\"...\"   : Run a SiliconCompiler flow (flow/sc_flow.py --help)."
+	@echo "  make sc_image        : Build the packet-handler-eda toolchain image."
 	@echo "  make benchmark       : Run performance benchmark test for python logic."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
 	@echo ""
@@ -53,9 +55,9 @@ endif
 # FIFO memory implementation (SRAM=1)
 # ==========================================
 # SRAM=1 defines PH_SKY130_SRAM, so ph_fifo_mem instantiates the Sky130
-# OpenRAM macro instead of its behavioral model. Simulation then needs the
-# macro's Verilog model and synthesis / STA its Liberty file, both fetched
-# into macros/sky130_sram/ by `make fetch_sram`.
+# OpenRAM macro instead of its behavioral model. Simulation adds the macro
+# model in macros/sky130_sram_model.v; synthesis / STA need the macro's
+# Liberty file, fetched into macros/sky130_sram/ by `make fetch_sram`.
 SRAM ?= 0
 SRAM_MACRO = sky130_sram_2kbyte_1rw1r_32x512_8
 SRAM_DIR   = macros/sky130_sram
@@ -63,21 +65,19 @@ SRAM_URL   = https://raw.githubusercontent.com/siliconcompiler/lambdapdk/v0.2.22
 SRAM_LIB   = $(SRAM_DIR)/$(SRAM_MACRO)_TT_1p8V_25C.lib
 
 ifeq ($(SRAM),1)
-    SRAM_DEP      = fetch_sram
-    SIM_RTL       = packet_handler.v macros/sky130_sram_model.v
-    IVERILOG_SRAM = -D PH_SKY130_SRAM -I macros
-    VERILATOR_SRAM = +define+PH_SKY130_SRAM -Imacros
+    SIM_RTL        = packet_handler.v macros/sky130_sram_model.v
+    IVERILOG_SRAM  = -D PH_SKY130_SRAM
+    VERILATOR_SRAM = +define+PH_SKY130_SRAM
 else
-    SRAM_DEP      =
-    SIM_RTL       = packet_handler.v
-    IVERILOG_SRAM =
+    SIM_RTL        = packet_handler.v
+    IVERILOG_SRAM  =
     VERILATOR_SRAM =
 endif
 
 .PHONY: fetch_sram
 fetch_sram:
 	@mkdir -p $(SRAM_DIR)
-	@for f in nldm/$(SRAM_MACRO)_TT_1p8V_25C.lib verilog/$(SRAM_MACRO).v lef/$(SRAM_MACRO).lef; do \
+	@for f in nldm/$(SRAM_MACRO)_TT_1p8V_25C.lib lef/$(SRAM_MACRO).lef; do \
 		if [ ! -f $(SRAM_DIR)/$$(basename $$f) ]; then \
 			echo "Fetching $$(basename $$f)..."; \
 			wget -q -O $(SRAM_DIR)/$$(basename $$f) $(SRAM_URL)/$$f || exit 1; \
@@ -119,10 +119,10 @@ ifeq ($(WAVE),1)
     COMPILE_ARGS += -D WAVE=1
 endif
 ifeq ($(SRAM),1)
-    COMPILE_ARGS += -D PH_SKY130_SRAM -I $(PWD)/macros
+    COMPILE_ARGS += -D PH_SKY130_SRAM
 endif
 
-cocotb: $(SRAM_DEP) run_cocotb
+cocotb: run_cocotb
 	@if [ "$(WAVE)" = "1" ]; then cp sim_build/*.vcd waves_cocotb.vcd || true; fi
 	@if [ "$(GUI)" = "1" ]; then gtkwave waves_cocotb.vcd & fi
 
@@ -146,7 +146,7 @@ endif
 
 # Default TB for Icarus
 icarus: TB_CLEAN ?= tb_basic_sv
-icarus: $(SRAM_DEP)
+icarus:
 	@echo "Running Icarus Verilog with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
@@ -165,7 +165,7 @@ endif
 
 # Default TB for Verilator
 verilator: TB_CLEAN ?= tb_uvm_sv
-verilator: $(SRAM_DEP)
+verilator:
 	@echo "Running Verilator with testbench: $(TB_CLEAN)"
 	@mkdir -p tests/logs
 ifeq ($(WAVE),1)
@@ -212,7 +212,7 @@ export CLK_PERIOD_NS
 
 # Container with OpenSTA, OpenROAD, Yosys, Icarus and Verilator. Used by
 # `make sta` when `sta` is not on PATH, and by the SiliconCompiler flows.
-EDA_IMAGE ?= ghcr.io/siliconcompiler/sc_runner:latest
+EDA_IMAGE ?= ghcr.io/siliconcompiler/sc_runner:v0.38.10
 STA_BIN := $(shell command -v sta 2>/dev/null)
 ifneq ($(STA_BIN),)
     STA_CMD = sta
@@ -235,7 +235,7 @@ ifeq ($(SRAM),1)
     export EXTRA_LIBS       = ../$(SRAM_LIB)
 endif
 
-synth: fetch_lib $(SRAM_DEP)
+synth: fetch_lib $(if $(filter 1,$(SRAM)),fetch_sram)
 	@echo "Running Yosys Synthesis Flow (CLK_PERIOD_NS=$(CLK_PERIOD_NS) SRAM=$(SRAM))..."
 	@cd synth && yosys -c synth.tcl -l synth.log > /dev/null
 	$(MAKE) --no-print-directory sta
@@ -250,6 +250,31 @@ synth_parse:
 	@echo "Parsing Synthesis Log..."
 	@python3 synth/scripts/synth_parse.py synth/synth.log synth/sta.rpt
 # ==========================================
+# SiliconCompiler Flows
+# ==========================================
+# flow/sc_flow.py runs every flow (lint, sim, cocotb, uvm, syn, asic) from one
+# design description. `make sc ARGS="<flow> [options]"` runs it in the
+# packet-handler-eda image (built by `make sc_image`), or with the local
+# Python when SC_LOCAL=1 and siliconcompiler is installed.
+#   make sc ARGS="sim --tool verilator --tb tb_uvm_sv"
+#   make sc ARGS="syn --sram --clk 8"
+.PHONY: sc sc_image
+
+SC_IMAGE ?= packet-handler-eda
+ARGS ?= lint
+ifeq ($(SC_LOCAL),1)
+    SC_CMD = python3
+else
+    SC_CMD = docker run --rm -e CLK_PERIOD_NS -v "$(PWD)":/work -w /work $(SC_IMAGE) python3
+endif
+
+sc_image:
+	docker build -t $(SC_IMAGE) flow/
+
+sc:
+	$(SC_CMD) flow/sc_flow.py $(ARGS)
+
+# ==========================================
 # Benchmark Flow
 # ==========================================
 .PHONY: benchmark
@@ -262,4 +287,4 @@ benchmark:
 .PHONY: clean
 clean::
 	$(MAKE) -C tests/uvm clean
-	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v synth/sta.rpt synth/abc.constr
+	rm -rf sim_build/ obj_dir/ sim_*.out wave*.vcd waves_*.vcd waves_*.fst results.xml __pycache__/ *.vcd tests/__pycache__/ synth/synth.log synth/synth_netlist.v synth/sta.rpt synth/abc.constr build/

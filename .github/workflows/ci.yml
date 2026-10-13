@@ -2,9 +2,10 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main", "jules-experimenting", "claude-main" ]
+    branches: [ "main", "jules-experimenting", "claude-main", "claude-experimenting" ]
   pull_request:
     branches: [ "main", "jules-experimenting", "claude-main" ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -44,6 +45,12 @@ jobs:
       run: |
         make verilator
 
+    - name: Run Cocotb and Icarus Flows with the SRAM Macro Model (SRAM=1)
+      run: |
+        rm -rf sim_build
+        make cocotb SRAM=1
+        make icarus SRAM=1
+
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
@@ -59,6 +66,12 @@ jobs:
       run: |
         export PATH="$GITHUB_WORKSPACE/../xezim/target/release:$PATH"
         make xezim_uvm
+
+    - name: Run Standard UVM Testbench (Xezim, SiliconCompiler)
+      run: |
+        export PATH="$GITHUB_WORKSPACE/../xezim/target/release:$PATH"
+        pip install siliconcompiler==0.38.10
+        make sc SC_LOCAL=1 ARGS="uvm --tool xezim"
 
   verilator-uvm:
     runs-on: ubuntu-latest
@@ -81,3 +94,103 @@ jobs:
       with:
         name: verilator-uvm-logs
         path: tests/uvm/logs/
+
+  synthesis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Yosys
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y yosys
+
+    # OpenSTA runs from the SiliconCompiler runner image (`sta` is not packaged).
+    - name: Synthesis + STA, FIFO in flip-flops
+      run: |
+        make synth
+        make synth_parse
+        mkdir -p reports/flops && cp synth/synth.log synth/sta.rpt reports/flops/
+
+    - name: Synthesis + STA, FIFO in the Sky130 SRAM macro (SRAM=1)
+      run: |
+        make synth SRAM=1
+        make synth_parse
+        mkdir -p reports/sram && cp synth/synth.log synth/sta.rpt reports/sram/
+
+    - name: Upload synthesis reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: synthesis-reports
+        path: reports/
+
+  siliconcompiler:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build toolchain image (SiliconCompiler runner + cocotb + z3)
+      run: make sc_image
+
+    - name: Lint (slang + Verilator)
+      run: make sc ARGS="lint"
+
+    - name: Simulation (Icarus, Verilator)
+      run: |
+        make sc ARGS="sim --tool icarus --tb tb_basic_sv"
+        make sc ARGS="sim --tool icarus --tb tb_smoke"
+        make sc ARGS="sim --tool verilator --tb tb_uvm_sv"
+        make sc ARGS="sim --tool verilator --tb tb_uvm_sv --sram"
+
+    - name: Cocotb (Icarus, Verilator, SRAM model)
+      run: |
+        make sc ARGS="cocotb --tool icarus"
+        make sc ARGS="cocotb --tool verilator"
+        make sc ARGS="cocotb --tool icarus --sram"
+
+    - name: UVM (Verilator)
+      run: make sc ARGS="uvm --tool verilator"
+
+    - name: Synthesis + STA (Yosys, OpenSTA)
+      run: |
+        make sc ARGS="syn"
+        make sc ARGS="syn --sram"
+
+    - name: Upload SiliconCompiler results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: siliconcompiler-build
+        path: |
+          build/**/*.log
+          build/**/reports/**
+          build/**/*.pkg.json
+
+  asic:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fifo: [ "flops", "sram" ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build toolchain image
+      run: make sc_image
+
+    - name: RTL-to-GDS (SiliconCompiler asicflow, Sky130 HD)
+      run: make sc ARGS="asic ${{ matrix.fifo == 'sram' && '--sram' || '' }}"
+
+    - name: Upload ASIC results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: asic-${{ matrix.fifo }}
+        path: |
+          build/**/*.log
+          build/**/reports/**
+          build/**/outputs/*.gds
