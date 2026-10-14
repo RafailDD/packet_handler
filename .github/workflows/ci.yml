@@ -1,5 +1,8 @@
 name: CI Pipeline
 
+# Pushes to claude-experimenting run CI only when the head commit message
+# contains "[run ci]"; every other branch, pull request and manual dispatch
+# runs it as usual.
 on:
   push:
     branches: [ "main", "jules-experimenting", "claude-main", "claude-experimenting" ]
@@ -9,6 +12,7 @@ on:
 
 jobs:
   test:
+    if: github.ref_name != 'claude-experimenting' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -74,6 +78,7 @@ jobs:
         make sc SC_LOCAL=1 ARGS="uvm --tool xezim"
 
   verilator-uvm:
+    if: github.ref_name != 'claude-experimenting' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -96,6 +101,7 @@ jobs:
         path: tests/uvm/logs/
 
   synthesis:
+    if: github.ref_name != 'claude-experimenting' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
 
     steps:
@@ -127,6 +133,7 @@ jobs:
         path: reports/
 
   siliconcompiler:
+    if: github.ref_name != 'claude-experimenting' || contains(github.event.head_commit.message, '[run ci]')
     runs-on: ubuntu-latest
 
     steps:
