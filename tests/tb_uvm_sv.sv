@@ -250,7 +250,7 @@ module tb_verilator_uvm;
         environment.gen.generate_items();
 
         for (int i=0; i<100; i++) begin
-            packet_item p = environment.gen.get_next();
+            automatic packet_item p = environment.gen.get_next();
             environment.scb.push_expected(p);
 
             environment.mon.sample(p.data_size, 0);

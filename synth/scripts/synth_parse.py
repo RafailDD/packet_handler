@@ -76,10 +76,34 @@ def parse_yosys_log(filepath):
     print("=" * 60)
 
 
+def parse_sta_report(filepath):
+    """Print WNS / TNS / Fmax from the OpenSTA report written by `make sta`."""
+    if not os.path.exists(filepath):
+        print(f"\n[TIMING]: '{filepath}' not found (run 'make sta').")
+        return
+
+    patterns = {
+        "WNS (ns)": r"^wns max\s+(\S+)",
+        "TNS (ns)": r"^tns max\s+(\S+)",
+        "Min period (ns)": r"period_min = (\S+)",
+        "Fmax (MHz)": r"fmax = (\S+)",
+    }
+    with open(filepath, 'r') as f:
+        text = f.read()
+
+    print("\n[TIMING] (OpenSTA, no wire parasitics)")
+    for label, pattern in patterns.items():
+        match = re.search(pattern, text, re.MULTILINE)
+        print(f"  {label:16}: {match.group(1) if match else 'n/a'}")
+    print("=" * 60)
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 synth_parse.py <path_to_synth_log>")
+        print("Usage: python3 synth_parse.py <path_to_synth_log> [<path_to_sta_rpt>]")
         sys.exit(1)
 
     log_file = sys.argv[1]
     parse_yosys_log(log_file)
+    if len(sys.argv) > 2:
+        parse_sta_report(sys.argv[2])

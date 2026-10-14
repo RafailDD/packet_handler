@@ -26,6 +26,10 @@ To cover all of this, we provide multiple pathways in the `tests/` directory:
 ## Running Tests
 You can view the available targets and options by running `make` with no arguments. (With cocotb installed, `make help` prints cocotb's help instead of the project's.)
 
+Two options apply across flows:
+- `SRAM=1` (on `cocotb`, `icarus`, `verilator`) simulates the FIFO with the Sky130 SRAM macro model (`macros/sky130_sram_model.v`) instead of the behavioral memory. See [FIFO memory options](../docs/memory_options.md).
+- Every flow below can also be run through SiliconCompiler with `make sc ARGS="..."` (e.g. `make sc ARGS="cocotb --tool verilator"`). See [SiliconCompiler flows](../README.md#siliconcompiler-flows).
+
 ### 1. Cocotb Flow
 - **Command:** `make cocotb`
 - **Description:** Runs the `tb_cocotb.py` test suite on Icarus Verilog through cocotb's Makefile flow. The target fails if any test fails. Results are also written to `results.xml` (JUnit format).
