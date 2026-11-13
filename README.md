@@ -139,6 +139,7 @@ Tools used for the project:
 - [TerosHDL](https://terostechnology.github.io/terosHDLdoc/)
 - [Sigasi Visual HDL](https://www.sigasi.com/) Community Edition
 - [Wavedrom](https://wavedrom.com/)
+- [EDACrux](https://edacrux.app/) (LintCrux, SimCrux, WaveCrux, NetCrux), see [edacrux/README.md](edacrux/README.md)
 
 # Project Roadmap
 - [x] Add URLs for tools used
@@ -157,6 +158,14 @@ Tools used for the project:
 ├── packet_handler.v            # The RTL (DUT)
 ├── Makefile                    # Unified entry point for every flow (run `make` to list targets)
 ├── .github/workflows/ci.yml    # GitHub Actions CI (see "Continuous Integration" below)
+├── edacrux/                    # EDACrux flows (LintCrux, SimCrux, WaveCrux, NetCrux), see edacrux/README.md
+│   ├── edacrux.mk              #   make targets, included by the Makefile (`make edacrux_help`)
+│   ├── simcrux.yaml            #   SimCrux regression: Icarus, Verilator, cocotb and UVM suites
+│   ├── packet_handler.lintcrux #   LintCrux project (+ lint_sram.json overlay, .svlint.toml rules)
+│   ├── packet_handler.netcrux-project  # NetCrux schematic project
+│   ├── packet_handler.crux-project     # design manifest shared by all four tools
+│   ├── cocotb/Makefile         #   cocotb Makefile for SimCrux's per-test work directory
+│   └── collect_waves.py        #   copies SimCrux waveforms to edacrux/waves/
 ├── flow/                       # SiliconCompiler flows (see "SiliconCompiler flows" below)
 │   ├── sc_flow.py              #   one design description, every flow: lint/sim/cocotb/uvm/syn/asic
 │   ├── tools/                  #   project SC tasks: UVM (Verilator, xezim), Tardigrade
@@ -210,6 +219,7 @@ All flows are driven from the top-level `Makefile`. Run `make` with no arguments
 | OpenSTA | `sta` (run by `synth`) | 3.1 | not packaged; `make sta` uses the `sc_runner` Docker image when `sta` is not on PATH |
 | Docker | `sc`, `sc_image`, `sta` without a local OpenSTA | - | see docs.docker.com |
 | GTKWave (optional) | `GUI=1` | - | `sudo apt-get install gtkwave` |
+| EDACrux suite (optional) | `lintcrux`, `simcrux`, `wavecrux`, `netcrux` | 2026.10.f (LintCrux 1.1.0, SimCrux 1.1.0, WaveCrux 1.1.1, NetCrux 1.1.3) | [edacrux.app](https://edacrux.app/); see [edacrux/README.md](edacrux/README.md#prerequisites) |
 
 Only the tools for the flows you want to run are required. cocotb is optional for all non-cocotb targets.
 
@@ -229,6 +239,9 @@ Only the tools for the flows you want to run are required. cocotb is optional fo
 | `make synth_parse` | Summarize `synth/synth.log` and `synth/sta.rpt` (errors, warnings, area, cells, WNS/TNS/Fmax). Run `make synth` first | stdout |
 | `make sc ARGS="<flow> [options]"` | Run a SiliconCompiler flow in the `packet-handler-eda` image (see below) | `build/packet_handler/<job>/` |
 | `make sc_image` | Build the `packet-handler-eda` image from `flow/Dockerfile` | Docker image |
+| `make lintcrux [SRAM=1] [LINT_GATE=1]` | LintCrux: Verilator, Verible, slang, Yosys, svlint and CDC lint in one report | `edacrux/build/lintcrux.{sarif,html}` |
+| `make simcrux [SIMCRUX_FILTER=..]` | SimCrux regression of every simulation flow (Icarus, Verilator, cocotb, UVM), with log-evidence pass/fail detectors | `edacrux/build/` (ndjson, JUnit, HTML), `edacrux/waves/` |
+| `make wavecrux` / `make netcrux` / `make lintcrux_gui` / `make simcrux_gui` | Open the EDACrux desktop apps on the project files | - |
 | `make benchmark` | Time two ways of packing 32-bit words into an integer (Python helper used by the cocotb tests); not a hardware test | stdout |
 | `make clean` | Remove simulation, synthesis and UVM outputs (including downloaded UVM sources). `tests/logs/` and `synth/lib/` are kept | - |
 | `verilator --lint-only -Wall packet_handler.v` | Lint the RTL (run by CI; no make target) | stdout |
@@ -281,6 +294,23 @@ make sc ARGS="syn --syn-tool tardigrade"             # once a tardigrade binary 
 ```
 
 Add `--sram` to any flow to use the SRAM macro. SiliconCompiler times every Sky130 corner, and its summary reports the **slow** corner (ss, 1.40 V, -40 °C), so `syn` shows about 30 MHz where `make synth` (typical corner, 1.80 V) shows 121 MHz. After place-and-route, both FIFO builds meet 10 ns at the typical and fast corners. Results (logs, reports, netlists, GDS) go to `build/packet_handler/<job>/`. `SC_LOCAL=1 make sc ARGS=...` uses a local `pip install siliconcompiler==0.38.10` and the tools on PATH instead of Docker. SiliconCompiler downloads the Sky130 PDK data from GitHub on first use.
+
+## EDACrux flows
+
+`edacrux/` runs the same RTL and testbenches through the EDACrux suite:
+- **LintCrux** merges six lint engines into one SARIF/HTML report.
+- **SimCrux** runs every simulation flow as one regression tree, with JUnit/HTML reports.
+- **WaveCrux** opens the regression's waveforms.
+- **NetCrux** shows the schematic.
+
+```bash
+make lintcrux                 # edacrux/build/lintcrux.sarif + .html
+make simcrux                  # 10 tests in 4 suites; SIMCRUX_FILTER=icarus/ for one suite
+make wavecrux                 # opens edacrux/waves/icarus_tb_smoke.fst via the design manifest
+make netcrux
+```
+
+`make simcrux` does not trust the testbenches' own PASSED lines, because `tb_basic_sv`, `tb_uvm_sv` and `tb_smoke` do not compare DUT outputs. Each test also needs log evidence of correct DUT behaviour. [edacrux/README.md](edacrux/README.md#what-each-test-proves) lists what each test proves, and the mutation check showing that only the cocotb suite catches `o_data` errors.
 
 ## Documentation diagrams
 

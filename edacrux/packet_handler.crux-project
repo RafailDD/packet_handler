@@ -1,0 +1,15 @@
+# EDACrux design manifest for packet_handler. Every Crux tool accepts it:
+#   wavecrux edacrux/            (opens artifacts.waveform)
+#   netcrux  edacrux/            (elaborates design.sources with Yosys)
+#   simcrux  -> artifacts.simulation, lintcrux -> artifacts.lint
+# Paths are relative to this file. See edacrux/README.md.
+version: 1
+name: packet_handler
+design:
+  top: packet_handler
+  sources:
+    - ../packet_handler.v
+artifacts:
+  lint: packet_handler.lintcrux
+  simulation: simcrux.yaml
+  waveform: waves/icarus_tb_smoke.fst

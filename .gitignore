@@ -34,3 +34,7 @@ synth/abc.constr
 synth/sta.rpt
 macros/sky130_sram/
 build/
+edacrux/waves/
+edacrux/local.mk
+edacrux/.simcrux/
+edacrux/results.summary.json

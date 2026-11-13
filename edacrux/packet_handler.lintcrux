@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "packet_handler",
+  "rootPath": ".",
+  "language": "verilog",
+  "sourceFiles": [
+    "../packet_handler.v"
+  ],
+  "includePaths": [],
+  "defines": {},
+  "topModule": "packet_handler",
+  "enabledEngineIds": [
+    "verilator",
+    "verible",
+    "slang",
+    "yosys",
+    "svlint",
+    "cdc"
+  ],
+  "perEngineOptions": {
+    "verilator": {
+      "warnFlags": [
+        "all"
+      ]
+    }
+  }
+}

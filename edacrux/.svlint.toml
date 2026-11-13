@@ -1,0 +1,16 @@
+# svlint rules for LintCrux (perEngineOptions.svlint.configPath).
+# packet_handler.v is Verilog-2001 style (reg/wire, always @), so svlint's
+# SystemVerilog style rules and its placeholder naming regexes are left off.
+# Only rules that point at functional risks or real RTL mistakes are enabled.
+# Without this file svlint enables every rule (~250 style findings).
+[option]
+
+[rules]
+case_default = true
+explicit_case_default = true
+blocking_assignment_in_always_at_edge = true
+non_blocking_assignment_in_always_no_edge = true
+multiline_if_begin = true
+multiline_for_begin = true
+loop_variable_declaration = true
+operator_case_equality = true

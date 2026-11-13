@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "sourceFiles": ["../packet_handler.v"],
+  "topModule": "packet_handler",
+  "defines": {},
+  "includePaths": [],
+  "blackBoxMissingModules": true
+}
