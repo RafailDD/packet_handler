@@ -99,7 +99,7 @@ The SystemVerilog-only rules (`always_ff`, `logic`, `var`, ...) and the template
 | `cocotb/verilator` | `make sc ARGS="cocotb --tool verilator"` | cocotb + Verilator | - |
 | `uvm/packet_test` | `make verilator_uvm COV=0` | Verilator >= 5.052 + Accellera UVM 2020.3.1 | - |
 
-`xezim_uvm` is not included. SimCrux has no xezim driver, and xezim's UVM report summary cannot be checked (see [tests/uvm/README.md](../tests/uvm/README.md#known-limitations)).
+`xezim_uvm` is not included, because SimCrux has no xezim driver. Run it with `make xezim_uvm` (see [tests/uvm/README.md](../tests/uvm/README.md#xezim-flow)).
 
 ### What each test proves
 

@@ -214,7 +214,7 @@ All flows are driven from the top-level `Makefile`. Run `make` with no arguments
 | Verilator | `verilator`, RTL lint | 5.020 (Ubuntu 24.04 package) | `sudo apt-get install verilator` |
 | Verilator + z3 | `verilator_uvm`, `verilator_uvm_all` | v5.052 or newer (the apt package is too old) | see [tests/uvm/README.md](tests/uvm/README.md#installing-verilator) |
 | Python 3 + cocotb | `cocotb`, `benchmark` (Python only) | Python 3.10/3.11, cocotb 2.x (the tests use the cocotb 2.0 API) | `pip install cocotb` |
-| xezim (Rust/cargo) | `xezim_uvm` | built from source | see [tests/uvm/README.md](tests/uvm/README.md#xezim-flow) |
+| xezim (Rust 1.100+ / cargo) | `xezim_uvm` | 0.11.6, built from source | see [tests/uvm/README.md](tests/uvm/README.md#xezim-flow) |
 | Yosys | `synth` | 0.33 | `sudo apt-get install yosys` |
 | OpenSTA | `sta` (run by `synth`) | 3.1 | not packaged; `make sta` uses the `sc_runner` Docker image when `sta` is not on PATH |
 | Docker | `sc`, `sc_image`, `sta` without a local OpenSTA | - | see docs.docker.com |

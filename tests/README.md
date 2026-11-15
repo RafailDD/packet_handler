@@ -69,7 +69,7 @@ Registered tests (run in this order):
 ### 4. Xezim UVM Flow
 - **Command:** `make xezim_uvm`
 - **Description:** Runs the standard UVM testbench in `uvm/` on the xezim simulator.
-- **Dependencies:** xezim (built from source with Rust/cargo), `git`.
+- **Dependencies:** xezim (built from source with Rust 1.100+ / cargo; verified with 0.11.6), `git`.
 
 ### 5. Verilator UVM Flow
 - **Command:** `make verilator_uvm [UVM_TESTNAME=<test>] [SEED=<n>] [COV=0]`
@@ -88,7 +88,7 @@ Append `WAVE=1` to a simulation target to dump waveforms. `GUI=1` implies `WAVE=
 | `make icarus TB=<tb>` | `waves_icarus_<tb>.vcd` | `tests/logs/sim_icarus_<tb>.log` |
 | `make verilator TB=<tb>` | `waves_verilator_<tb>.vcd` | `tests/logs/sim_verilator_<tb>.log` |
 | `make verilator_uvm` | `waves_verilator_uvm.vcd` (DUT scope only) | `tests/uvm/logs/verilator_<test>.log` |
-| `make xezim_uvm` | not supported | `tests/uvm/logs/xezim_packet_test.log` |
+| `make xezim_uvm` | not wired up: the target does not pass xezim's `--wave` (see [uvm/README.md](uvm/README.md#known-limitations)) | `tests/uvm/logs/xezim_packet_test.log` |
 
 ```bash
 make icarus TB=tb_smoke WAVE=1

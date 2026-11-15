@@ -58,10 +58,12 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
+    # xezim's build drives clang and the LLVM archive tools, and Cargo fetches
+    # xezim-core itself (pinned in xezim's Cargo.toml).
     - name: Build Xezim Simulator
       run: |
+        sudo apt-get install -y clang llvm
         cd ..
-        git clone https://github.com/aionhw/xezim-core.git
         git clone https://github.com/aionhw/xezim.git
         cd xezim
         cargo build --release
