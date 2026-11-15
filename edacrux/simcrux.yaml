@@ -1,0 +1,199 @@
+# SimCrux regression for packet_handler: every simulation flow of the
+# top-level Makefile as one test tree. Run it with `make simcrux` (headless,
+# writes build/results.ndjson + reports) or `make simcrux_gui` (SimCrux desktop).
+# Paths are relative to this file. Details and caveats: edacrux/README.md.
+#
+# Pass/fail: tb_basic_sv, tb_uvm_sv and tb_smoke do not compare DUT outputs
+# (tb_basic_sv / tb_uvm_sv always print PASSED, tb_smoke prints nothing). Their
+# own PASSED line is therefore never trusted on its own: each detector below
+# also requires log evidence that the DUT did the expected thing (packet count,
+# o_packetLost pulse, ...). See "What each test proves" in edacrux/README.md.
+version: '1'
+project_id: packet_handler
+
+defaults:
+  timeout: 300s
+  pass_fail:
+    type: exit_code
+
+output:
+  results_path: build/results.ndjson
+
+simulators:
+  verilator:
+    options:
+      # --timescale: tests/uvm/tb_top.sv has a `timescale, packet_handler.v and
+      # uvm_pkg.sv do not (same flag as tests/uvm/Makefile). -j 0: the driver
+      # builds with -j 1 by default, which makes the UVM build ~6x slower.
+      args: "--timescale 1ns/1ps -j 0"
+
+suites:
+  # --------------------------------------------------------------------------
+  # Icarus Verilog (same as `make icarus TB=...`). Waveforms: FST, one per test.
+  # --------------------------------------------------------------------------
+  icarus:
+    description: Icarus Verilog, standalone SV/Verilog testbenches (make icarus)
+    simulator: icarus
+    sources:
+      - ../packet_handler.v
+    include_dirs:
+      - ../tests
+    tests:
+      - name: tb_basic_sv
+        top: tb_basic_sv
+        sources: [../tests/tb_basic_sv.sv]
+        defines: { WAVE: '1', WAVE_FILE: '"tb_basic_sv.fst"' }
+        waveform: { capture: always, format: fst }
+        pass_fail: &basic_sv_checks
+          type: composite
+          all_of:
+            - type: exit_code
+            # 5 in-order packets + 1 with a skipped seqNumber must all come out.
+            - type: string_match
+              pass_string: "Packets received: 6, Errors: 0"
+              fail_string: "STATUS: FAILED"
+            # The skipped seqNumber (7 after 5) must raise o_packetLost.
+            - type: string_match
+              pass_string: "SCOREBOARD: Packet Lost detected!"
+
+      - name: tb_basic_sv_sram
+        top: tb_basic_sv
+        sources: [../tests/tb_basic_sv.sv, ../macros/sky130_sram_model.v]
+        defines: { PH_SKY130_SRAM: '', WAVE: '1', WAVE_FILE: '"tb_basic_sv_sram.fst"' }
+        waveform: { capture: always, format: fst }
+        pass_fail: *basic_sv_checks
+
+      - name: tb_smoke
+        top: tb_smoke
+        sources: [../tests/tb_smoke.v]
+        defines: { WAVE: '1', WAVE_FILE: '"tb_smoke.fst"' }
+        waveform: { capture: always, format: fst }
+        pass_fail: &smoke_checks
+          type: composite
+          all_of:
+            - type: exit_code
+            # Third packet has seqNumber 4 after 2: o_packetLost must pulse.
+            - type: string_match
+              pass_string: "packetLost=1"
+            # ... and a packet must reach the output (validOut high).
+            - type: string_match
+              pass_string: "validOut=1"
+
+  # --------------------------------------------------------------------------
+  # Verilator (same testbenches as `make verilator TB=...`). No waveforms:
+  # SimCrux's generated Verilator main never calls traceEverOn(), so a
+  # testbench that calls $dumpfile aborts. Use `make verilator WAVE=1`.
+  # --------------------------------------------------------------------------
+  verilator:
+    description: Verilator, standalone SV/Verilog testbenches (make verilator)
+    simulator: verilator
+    sources:
+      - ../packet_handler.v
+    include_dirs:
+      - ../tests
+    tests:
+      - name: tb_uvm_sv
+        top: tb_verilator_uvm
+        sources: [../tests/tb_uvm_sv.sv]
+        waveform: { capture: never }
+        pass_fail:
+          type: composite
+          all_of:
+            - type: exit_code
+            # Every generated packet must be seen at the output, and no
+            # output may arrive without a matching input.
+            - type: string_match
+              pass_string: "TEST PASSED: All 100 packets"
+              fail_string: "Received unexpected packet"
+            # Packet loss, 1-word and 9-word packets all exercised.
+            - type: string_match
+              pass_string: "Coverage 100 percent Achieved"
+
+      - name: tb_basic_sv
+        top: tb_basic_sv
+        sources: [../tests/tb_basic_sv.sv]
+        waveform: { capture: never }
+        pass_fail: *basic_sv_checks
+
+      - name: tb_smoke
+        top: tb_smoke
+        sources: [../tests/tb_smoke.v]
+        waveform: { capture: never }
+        pass_fail: *smoke_checks
+
+  # --------------------------------------------------------------------------
+  # cocotb (same suite as `make cocotb`). SimCrux copies `sources` flat into a
+  # per-test work directory and runs `make` there with SIM/TOPLEVEL set;
+  # cocotb/Makefile builds VERILOG_SOURCES from the copied files.
+  # --------------------------------------------------------------------------
+  cocotb:
+    description: cocotb suite tests/tb_cocotb.py (make cocotb)
+    simulator: cocotb
+    sources:
+      - cocotb/Makefile
+      - ../packet_handler.v
+      - ../tests/tb_cocotb.py
+    tests:
+      - name: icarus
+        top: packet_handler
+        parameters: { MODULE: tb_cocotb, sim: icarus }
+        waveform: { capture: always, format: fst }
+        pass_fail: &cocotb_checks
+          type: composite
+          all_of:
+            - type: cocotb
+            # The cocotb detector reads the summary only. A simulator that
+            # crashes after the summary (no results.xml, make exits 2) must
+            # still fail.
+            - type: exit_code
+            # tb_cocotb.py registers 8 tests. A smaller TESTS= count means a
+            # test stopped being collected (two are already undecorated).
+            - type: regex
+              pass_pattern: 'TESTS=8 PASS=8 FAIL=0'
+
+      - name: icarus_sram
+        top: packet_handler
+        # cocotb/Makefile adds -DPH_SKY130_SRAM when the macro model is present.
+        sources: [../macros/sky130_sram_model.v]
+        parameters: { MODULE: tb_cocotb, sim: icarus }
+        waveform: { capture: always, format: fst }
+        pass_fail: *cocotb_checks
+
+      - name: verilator
+        top: packet_handler
+        parameters: { MODULE: tb_cocotb, sim: verilator }
+        waveform: { capture: never }
+        pass_fail: *cocotb_checks
+
+  # --------------------------------------------------------------------------
+  # Standard UVM testbench on Verilator (same as `make verilator_uvm COV=0`).
+  # Needs Verilator >= 5.052 and z3 on PATH, and the Accellera uvm-core
+  # checkout (`make simcrux` fetches it via tests/uvm/Makefile).
+  # --------------------------------------------------------------------------
+  uvm:
+    description: IEEE 1800.2 UVM testbench tests/uvm/tb_top.sv on Verilator >= 5.052
+    simulator: verilator
+    timeout: 1800s
+    sources:
+      - ../tests/uvm/verilator.vlt
+      - ../tests/uvm/uvm-core/src/uvm_pkg.sv
+      - ../packet_handler.v
+      - ../tests/uvm/tb_top.sv
+    include_dirs:
+      - ../tests/uvm/uvm-core/src
+    defines:
+      UVM_NO_DPI: ''
+      UVM_REPORT_DISABLE_FILE_LINE: ''
+    tests:
+      - name: packet_test
+        top: tb_top
+        waveform: { capture: never }
+        pass_fail:
+          type: composite
+          all_of:
+            - type: exit_code
+            # UVM report summary printed, no UVM_ERROR / UVM_FATAL.
+            - type: uvm_report
+            # The scoreboard checked all 16 packets of packet_seq.
+            - type: regex
+              pass_pattern: '\[SCOREBOARD\]\s+16\b'

@@ -26,6 +26,8 @@ help:
 	@echo "  make sc ARGS=\"...\"   : Run a SiliconCompiler flow (flow/sc_flow.py --help)."
 	@echo "  make sc_image        : Build the packet-handler-eda toolchain image."
 	@echo "  make benchmark       : Run performance benchmark test for python logic."
+	@echo "  make lintcrux / simcrux / wavecrux / netcrux : EDACrux flows."
+	@echo "                         See 'make edacrux_help' and edacrux/README.md."
 	@echo "  make clean           : Remove generated simulation files and artifacts."
 	@echo ""
 	@echo "Options:"
@@ -273,6 +275,12 @@ sc_image:
 
 sc:
 	$(SC_CMD) flow/sc_flow.py $(ARGS)
+
+# ==========================================
+# EDACrux Flows (LintCrux, SimCrux, WaveCrux, NetCrux)
+# ==========================================
+# Targets live in edacrux/edacrux.mk; `make edacrux_help` lists them.
+include edacrux/edacrux.mk
 
 # ==========================================
 # Benchmark Flow

@@ -1,0 +1,9 @@
+{
+  "sourceFiles": [
+    "../packet_handler.v",
+    "../macros/sky130_sram_model.v"
+  ],
+  "defines": {
+    "PH_SKY130_SRAM": ""
+  }
+}

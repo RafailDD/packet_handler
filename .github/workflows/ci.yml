@@ -58,12 +58,20 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
+    # xezim is pinned to a release tag. The commit check fails the build if the
+    # tag is ever moved upstream; bump both values together (and the version in
+    # README.md, tests/README.md and tests/uvm/README.md). xezim's build drives clang and the LLVM archive
+    # tools, and Cargo fetches xezim-core itself (pinned in xezim's Cargo.toml).
     - name: Build Xezim Simulator
+      env:
+        XEZIM_TAG: '0.11.6'
+        XEZIM_COMMIT: df09d68bfb3fd1c525937bd97b30dcd6ec328d7e
       run: |
+        sudo apt-get install -y clang llvm
         cd ..
-        git clone https://github.com/aionhw/xezim-core.git
-        git clone https://github.com/aionhw/xezim.git
+        git clone --depth 1 --branch "$XEZIM_TAG" https://github.com/aionhw/xezim.git
         cd xezim
+        test "$(git rev-parse HEAD)" = "$XEZIM_COMMIT"
         cargo build --release
 
     - name: Run Standard UVM Testbench (Xezim)

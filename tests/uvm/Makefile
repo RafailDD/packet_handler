@@ -45,6 +45,13 @@ UVM_URL ?= https://github.com/chipsalliance/uvm-verilator.git
 UVM_BRANCH ?= uvm-2020-3.1-vlt
 UVM_ROOT = uvm-src/src
 XEZIM ?= xezim
+XZ_WAVE_FILE = ../../waves_xezim_uvm.vcd
+
+XZ_ARGS = --simulate --max-time 10000000 -I$(UVM_ROOT) -D UVM_NO_DPI
+# xezim only honours $dumpfile / $dumpvars when the model is built with --wave.
+ifeq ($(WAVE),1)
+    XZ_ARGS += --wave -D WAVE=1 -D 'WAVE_FILE="$(XZ_WAVE_FILE)"'
+endif
 
 uvm-src:
 	@echo "Downloading standard UVM library (branch $(UVM_BRANCH))..."
@@ -53,13 +60,12 @@ uvm-src:
 sim: uvm-src
 	@echo "Running xezim UVM flow..."
 	@mkdir -p $(LOG_DIR)
-	$(XEZIM) --simulate --max-time 10000000 \
-		-I$(UVM_ROOT) \
-		-D UVM_NO_DPI \
+	$(XEZIM) $(XZ_ARGS) \
 		$(UVM_ROOT)/uvm_pkg.sv \
 		$(RTL) \
 		$(TB_TOP) 2>&1 | tee $(LOG_DIR)/xezim_$(UVM_TESTNAME).log
 	$(call check_uvm_log,$(LOG_DIR)/xezim_$(UVM_TESTNAME).log)
+	@if [ "$(GUI)" = "1" ]; then gtkwave $(XZ_WAVE_FILE) & fi
 
 # ==========================================
 # Verilator UVM Flow

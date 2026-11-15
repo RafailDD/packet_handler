@@ -29,6 +29,7 @@ You can view the available targets and options by running `make` with no argumen
 Two options apply across flows:
 - `SRAM=1` (on `cocotb`, `icarus`, `verilator`) simulates the FIFO with the Sky130 SRAM macro model (`macros/sky130_sram_model.v`) instead of the behavioral memory. See [FIFO memory options](../docs/memory_options.md).
 - Every flow below can also be run through SiliconCompiler with `make sc ARGS="..."` (e.g. `make sc ARGS="cocotb --tool verilator"`). See [SiliconCompiler flows](../README.md#siliconcompiler-flows).
+- Flows 1, 2, 3 and 5 also run as one SimCrux regression with `make simcrux`. It adds log-evidence pass/fail checks for the testbenches that do not check themselves. See [edacrux/README.md](../edacrux/README.md#simcrux) for what each SimCrux test proves.
 
 ### 1. Cocotb Flow
 - **Command:** `make cocotb`
@@ -60,15 +61,15 @@ Registered tests (run in this order):
 ### 3. Verilator Flow
 - **Command:** `make verilator [TB=<testbench>]`
 - **Description:** Compiles the RTL and the testbench with `verilator --binary -Wall` into `obj_dir/Vpacket_handler` and runs it. Defaults to `TB=tb_uvm_sv`; `tb_basic_sv` and `tb_smoke` also work.
-- **Dependencies:** Verilator (`verilator`). The Ubuntu 24.04 package (5.020) is enough for this flow.
+- **Dependencies:** Verilator (`verilator`). The Ubuntu 24.04 package (5.020) is enough for this flow. With newer releases (e.g. 5.046), `TB=tb_basic_sv` fails to compile under `-Wall` (`IMPLICITSTATIC`, `PROCASSINIT` on `tests/tb_basic_sv.sv`).
 
 > [!WARNING]
-> In the `icarus` and `verilator` targets the compiler and simulator output is piped through `tee`, so the target returns success even when compilation fails. Check the log. With a `TB` name that does not exist, `make verilator` builds the DUT on its own and the resulting binary never finishes (stop it with Ctrl-C).
+> In the `icarus` and `verilator` targets the compiler and simulator output is piped through `tee`, so the target returns success even when compilation fails. Check the log. With a `TB` name that does not exist, `make verilator` builds the DUT on its own and the resulting binary never finishes (stop it with Ctrl-C). Since `obj_dir/Vpacket_handler` is reused, a failed build then runs the binary of the previous testbench (or a stale one from another Verilator install) and prints its output.
 
 ### 4. Xezim UVM Flow
 - **Command:** `make xezim_uvm`
 - **Description:** Runs the standard UVM testbench in `uvm/` on the xezim simulator.
-- **Dependencies:** xezim (built from source with Rust/cargo), `git`.
+- **Dependencies:** xezim (built from source with Rust 1.100+ / cargo; verified with 0.11.6), `git`.
 
 ### 5. Verilator UVM Flow
 - **Command:** `make verilator_uvm [UVM_TESTNAME=<test>] [SEED=<n>] [COV=0]`
@@ -87,7 +88,7 @@ Append `WAVE=1` to a simulation target to dump waveforms. `GUI=1` implies `WAVE=
 | `make icarus TB=<tb>` | `waves_icarus_<tb>.vcd` | `tests/logs/sim_icarus_<tb>.log` |
 | `make verilator TB=<tb>` | `waves_verilator_<tb>.vcd` | `tests/logs/sim_verilator_<tb>.log` |
 | `make verilator_uvm` | `waves_verilator_uvm.vcd` (DUT scope only) | `tests/uvm/logs/verilator_<test>.log` |
-| `make xezim_uvm` | not supported | `tests/uvm/logs/xezim_packet_test.log` |
+| `make xezim_uvm` | `waves_xezim_uvm.vcd` (DUT scope only) | `tests/uvm/logs/xezim_packet_test.log` |
 
 ```bash
 make icarus TB=tb_smoke WAVE=1
