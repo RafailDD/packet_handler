@@ -6,7 +6,7 @@ Historically, open-source simulators struggled to compile and run the full IEEE 
 
 | Flow | Command | Simulator | UVM library | Extras |
 | ---- | ------- | --------- | ----------- | ------ |
-| xezim | `make xezim_uvm` (or `make sim` here) | [xezim](https://github.com/aionhw/xezim) 0.11.6, Rust-based | `chipsalliance/uvm-verilator`, branch `uvm-2020-3.1-vlt` | – |
+| xezim | `make xezim_uvm` (or `make sim` here) | [xezim](https://github.com/aionhw/xezim) 0.11.6, Rust-based | `chipsalliance/uvm-verilator`, branch `uvm-2020-3.1-vlt` | Waveforms |
 | Verilator | `make verilator_uvm` (or `make verilator` here) | [Verilator](https://www.veripool.org/verilator/) v5.052 | Unmodified Accellera `uvm-core`, tag `2020.3.1` | Code coverage, waveforms, seeds, multi-test runs |
 
 Running both is deliberate: the same UVM code on two independent simulators catches testbench bugs and simulator bugs that a single tool can hide.
@@ -48,10 +48,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 With an older Rust already installed, `rustup toolchain install 1.100.0` adds the newer one next to it; build with `cargo +1.100.0 ...`.
 
 ### Installing Xezim
-The flow was last verified with xezim **0.11.6** (commit `df09d68b`, 2026-11-13).
+The flow was last verified with xezim **0.11.6** (tag `0.11.6`, commit `df09d68b`, 2026-11-13), which is also the version CI builds.
 ```bash
-# In an installation directory of your choice:
-git clone https://github.com/aionhw/xezim.git
+# In an installation directory of your choice (drop --branch for the latest xezim):
+git clone --branch 0.11.6 https://github.com/aionhw/xezim.git
 cd xezim
 cargo build --release
 ```
@@ -70,8 +70,11 @@ Ensure the `xezim/target/release` directory is added to your system's `PATH`.
 ### Running
 ```bash
 make xezim_uvm          # from the repository root
+make xezim_uvm WAVE=1   # writes waves_xezim_uvm.vcd (DUT scope only)
+make xezim_uvm GUI=1    # ...and opens it in GTKWave
 make sim                # from tests/uvm
 ```
+xezim ignores `$dumpfile` / `$dumpvars` unless the model is built with `--wave`, which makes the simulation slower. `WAVE=1` adds that flag together with the `WAVE` / `WAVE_FILE` defines that `tb_top.sv` uses.
 
 #### What happens under the hood?
 1. **Fetch UVM**: The Makefile clones the `chipsalliance/uvm-verilator` UVM 2020.3.1 branch into `uvm-src/`.
@@ -150,8 +153,7 @@ Targets available from `tests/uvm` (run `make help` there):
   - With xezim 0.11.6 it works. The summary lists the severity counts (0 errors, 16 `[SCOREBOARD]` reports), and a scoreboard edited to reject 7 of the packets gives `UVM_ERROR : 7` and a failed target. Randomized fields differ between packets, and there is no `[DRVCONNECT]` warning.
   - An earlier xezim build used by CI printed a summary without the counts, although 16 `UVM_ERROR` messages had been printed. With such a build the target cannot detect scoreboard errors. That log also showed a `[DRVCONNECT]` warning and identical "random" field values across packets.
 - **xezim delay warning**: xezim 0.11.6 prints `[xezim][warning] a #delay evaluated to a pathological real value 9.2000e15 at .../uvm_phase_hopper.svh:561`. That delay is UVM's default phase timeout (`UVM_DEFAULT_TIMEOUT`, 9200 s, in ps). The run is not affected.
-- **xezim waveforms**: xezim ignores `$dumpfile` / `$dumpvars` unless it is run with `--wave`, which the `sim` target does not pass. Adding `--wave -D WAVE=1 -D 'WAVE_FILE="<file>.vcd"'` to the xezim command by hand writes a VCD of `tb_top.dut`.
-- CI builds xezim from its default branch (not pinned), so the xezim results can change without any change in this repository. xezim's build requirements also move: 0.11.6 needs Rust 1.100 and clang/LLVM, which earlier revisions did not.
+- **xezim version in CI**: CI builds the xezim tag `0.11.6` and checks that it still points at commit `df09d68b` (`XEZIM_TAG` / `XEZIM_COMMIT` in `.github/workflows/ci.yml`). Moving to a newer xezim means changing both values. Check its build requirements when you do: 0.11.6 needs Rust 1.100 and clang/LLVM, which earlier revisions did not. The Rust toolchain itself is not pinned (latest stable).
 
 ## Roadmap
 - [x] Verilator + stock Accellera UVM flow (`make verilator_uvm`), CI job, pass/fail gate on UVM errors for both flows

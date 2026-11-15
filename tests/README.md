@@ -88,7 +88,7 @@ Append `WAVE=1` to a simulation target to dump waveforms. `GUI=1` implies `WAVE=
 | `make icarus TB=<tb>` | `waves_icarus_<tb>.vcd` | `tests/logs/sim_icarus_<tb>.log` |
 | `make verilator TB=<tb>` | `waves_verilator_<tb>.vcd` | `tests/logs/sim_verilator_<tb>.log` |
 | `make verilator_uvm` | `waves_verilator_uvm.vcd` (DUT scope only) | `tests/uvm/logs/verilator_<test>.log` |
-| `make xezim_uvm` | not wired up: the target does not pass xezim's `--wave` (see [uvm/README.md](uvm/README.md#known-limitations)) | `tests/uvm/logs/xezim_packet_test.log` |
+| `make xezim_uvm` | `waves_xezim_uvm.vcd` (DUT scope only) | `tests/uvm/logs/xezim_packet_test.log` |
 
 ```bash
 make icarus TB=tb_smoke WAVE=1
