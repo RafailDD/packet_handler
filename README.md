@@ -243,7 +243,8 @@ Only the tools for the flows you want to run are required. cocotb is optional fo
 | `make simcrux [SIMCRUX_FILTER=..]` | SimCrux regression of every simulation flow (Icarus, Verilator, cocotb, UVM), with log-evidence pass/fail detectors | `edacrux/build/` (ndjson, JUnit, HTML), `edacrux/waves/` |
 | `make wavecrux` / `make netcrux` / `make lintcrux_gui` / `make simcrux_gui` | Open the EDACrux desktop apps on the project files | - |
 | `make benchmark` | Time two ways of packing 32-bit words into an integer (Python helper used by the cocotb tests); not a hardware test | stdout |
-| `make clean` | Remove simulation, synthesis and UVM outputs (including downloaded UVM sources). `tests/logs/` and `synth/lib/` are kept | - |
+| `make edacrux_help` / `make edacrux_clean` | List the EDACrux targets / remove only the EDACrux outputs | - |
+| `make clean` | Remove simulation, synthesis, UVM and EDACrux outputs (including downloaded UVM sources). `tests/logs/` and `synth/lib/` are kept | - |
 | `verilator --lint-only -Wall packet_handler.v` | Lint the RTL (run by CI; no make target) | stdout |
 
 `SRAM=1` builds the FIFO around the Sky130 SRAM macro (`PH_SKY130_SRAM`) for `cocotb`, `icarus`, `verilator`, `synth` and `sta`; simulations add `macros/sky130_sram_model.v`. Options: `WAVE=1` dumps waveforms and `GUI=1` also opens them in GTKWave (simulation targets only, see [Waveforms & Logs](tests/README.md#waveforms--logs) for where each flow writes them). `TB=<name>` selects the testbench for `icarus` / `verilator` (a `.v`/`.sv` extension is stripped).

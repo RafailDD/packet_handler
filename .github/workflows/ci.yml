@@ -60,7 +60,7 @@ jobs:
 
     # xezim is pinned to a release tag. The commit check fails the build if the
     # tag is ever moved upstream; bump both values together (and the version in
-    # tests/uvm/README.md). xezim's build drives clang and the LLVM archive
+    # README.md, tests/README.md and tests/uvm/README.md). xezim's build drives clang and the LLVM archive
     # tools, and Cargo fetches xezim-core itself (pinned in xezim's Cargo.toml).
     - name: Build Xezim Simulator
       env:

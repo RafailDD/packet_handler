@@ -55,7 +55,7 @@ edacrux_help:
 	@echo "  make simcrux_gui                     : open edacrux/simcrux.yaml in the SimCrux app"
 	@echo "  make wavecrux [WAVE_FILE_CRUX=..]    : open a waveform (default: design manifest) in WaveCrux"
 	@echo "  make netcrux                         : open the schematic in NetCrux"
-	@echo "  make edacrux_clean                   : remove edacrux/build and edacrux/waves"
+	@echo "  make edacrux_clean                   : remove edacrux/build, edacrux/waves and SimCrux run history"
 	@echo "Options: SIMCRUX_VERILATOR=<verilator >= 5.052>  SIMCRUX_ARGS=\"...\"  LINTCRUX=/SIMCRUX=<cli path>"
 
 # ---------------------------------------------------------------- LintCrux

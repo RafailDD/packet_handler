@@ -78,7 +78,7 @@ xezim ignores `$dumpfile` / `$dumpvars` unless the model is built with `--wave`,
 
 #### What happens under the hood?
 1. **Fetch UVM**: The Makefile clones the `chipsalliance/uvm-verilator` UVM 2020.3.1 branch into `uvm-src/`.
-2. **Execute Simulation**: `xezim` compiles the `packet_handler` RTL along with the UVM library and the `tb_top.sv` testbench.
+2. **Execute Simulation**: `xezim` compiles the `packet_handler` RTL along with the UVM library and the `tb_top.sv` testbench (with `--wave` and the `WAVE` / `WAVE_FILE` defines when `WAVE=1`).
 3. **Check**: The log (`logs/xezim_packet_test.log`) is checked for UVM errors.
 
 ---
@@ -135,7 +135,7 @@ Targets available from `tests/uvm` (run `make help` there):
 | `ALL_TESTNAMES` | `packet_test` | Tests run by `verilator_all` |
 | `SEED` | `1` | `+verilator+seed+` value. Changes randomized stimulus without a rebuild |
 | `COV` | `1` | Line/toggle/branch/expression coverage of the DUT and testbench |
-| `WAVE` / `GUI` | off | VCD dump of `tb_top.dut` |
+| `WAVE` / `GUI` | off | VCD dump of `tb_top.dut` (also honoured by `sim`, the xezim flow) |
 | `UVM_HOME` | `uvm-core/src` | Point at another UVM install, e.g. an Accellera 2020.3.2 tarball |
 | `VERILATOR` | `verilator` | Verilator binary |
 | `NJOBS` | `nproc` | Parallel C++ build jobs |

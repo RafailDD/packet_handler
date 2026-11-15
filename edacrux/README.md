@@ -53,7 +53,7 @@ All targets run the tools with `LD_PRELOAD` unset. NoMachine remote sessions pre
 | `make simcrux_gui` | Open `simcrux.yaml` in the SimCrux app, with the same PATH as `make simcrux` | - |
 | `make wavecrux [WAVE_FILE_CRUX=<file>]` | Open WaveCrux on the design manifest, which shows `waves/icarus_tb_smoke.fst`, or on any waveform file | - |
 | `make netcrux` | Open the schematic in NetCrux | - |
-| `make edacrux_clean` | Remove `edacrux/build/` and `edacrux/waves/` | - |
+| `make edacrux_clean` | Remove `edacrux/build/`, `edacrux/waves/`, `results.summary.json` and `.simcrux/` (also run by `make clean`) | - |
 
 `SIMCRUX_FILTER` is a plain substring of the test id `<suite>/<test>`. For example, `icarus/` runs one suite and `uvm/` runs only the UVM test.
 
@@ -158,6 +158,7 @@ Behaviour of SimCrux 1.1.0's drivers that this configuration depends on:
 make wavecrux WAVE_FILE_CRUX=edacrux/waves/icarus_tb_basic_sv.fst
 make wavecrux WAVE_FILE_CRUX=waves_icarus_tb_smoke.vcd     # from `make icarus TB=tb_smoke WAVE=1`
 make wavecrux WAVE_FILE_CRUX=waves_verilator_uvm.vcd       # from `make verilator_uvm WAVE=1`
+make wavecrux WAVE_FILE_CRUX=waves_xezim_uvm.vcd           # from `make xezim_uvm WAVE=1`
 ```
 
 Verilator waveforms are not produced by SimCrux (see [Known issues](#known-issues)). Use the existing `make verilator WAVE=1` / `make verilator_uvm WAVE=1` targets and open the VCD as above.
